@@ -8,23 +8,23 @@ except ImportError:
     distribute_setup.use_setuptools()
     from setuptools import setup, find_packages
 
-import tripy
+import tripl
 
 if sys.version_info < (2, 7, 0):
     raise Exception('Python 2.7 is required.')
 
-setup(name='tripy',
-      version=tripy.__version__,
-      description="""Tripy is a python tool for dealing with Trip data.""",
+setup(name='tripl',
+      version=tripl.__version__,
+      description="""tripl is a python tool for dealing with Trip data.""",
       author='Christopher Small',
       author_email='metasoarous@gmail.com',
-      url='https://github.com/metasoarous/tripy',
+      url='https://github.com/metasoarous/tripl',
       packages=find_packages(),
       entry_points={
           'console_scripts': [
-              'trip = tripy.cli:main',
+              'trip = tripl.cli:main',
           ]
       },
-      #test_suite='tripy.test.suite',
+      #test_suite='tripl.test.suite',
       #tests_require=['mock>=1.0.1']
       )

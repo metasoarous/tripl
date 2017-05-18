@@ -1,5 +1,5 @@
 
-# Trip
+# Tripl
 
 A data format for "all the things", inspired by Datomic and the Semantic Web.
 
@@ -12,19 +12,7 @@ A data format for "all the things", inspired by Datomic and the Semantic Web.
 * utilities for spitting/slurping this data to/from other formats and stores
 * the ability to describe entities pointing to files of external data, and how to interpret them
 
-Other goals:
-
-* Simple pull query, and entity pattern matcher
-
-
-Name is still a toss up, as is the py lib name.
-Tripl? Trpl? Triply?
-
-
-
-## Tripy
-
-A python library for working with Trip data, and for the moment, the canonical Trip implementation.
+A python library for working with Tripl data, and for the moment, the canonical Tripl implementation.
 
 
 ## Problem statement
@@ -70,9 +58,9 @@ And if this is done well, there are some serious benefits to being in Unix and u
 So a proper solution must take this into account, and accentuate these strengths.
 
 
-## Enter Trip
+## Enter Tripl
 
-Trip's aim is to solve this problem via a minimally constrained JSON usage pattern taking the best of Datomic and its antecedent DataScript, maximizing flexibility as a simple data format.
+Tripl's aim is to solve this problem via a minimally constrained JSON usage pattern taking the best of Datomic and its antecedent DataScript, maximizing flexibility as a simple data format.
 The constraints are:
 
 * Every entity must have a globally unique identity, represented as a string
@@ -97,12 +85,12 @@ So, as bioinformaticians, we enter this paradigm where we can conveniently spit 
 
 Targeting JSON, there's no limit to where this data can go.
 Any language should be able to read and use this data without a ton of difficulty.
-The core Tripy library clocked in at right around 120 lines of code with basic file read/write, pull query, and entity pattern matching evaluation.
+The core Tripl library clocked in at right around 120 lines of code with basic file read/write, pull query, and entity pattern matching evaluation.
 With all of the schema, indexing of VAE triples for faster reverse lookup queries and such, this looks to go a few hundred lines, but is still a fairly simple thing.
 But also, if you are on a platform or circumstance where Datomic, DataScript or Mentat are available, the format being used here can very naturally target any of these databases.
 
 
-## Tripy
+## Tripl
 
 This is the canonical python API.
 It's still in draft, so details may change, but the flavor is as follows.
@@ -124,7 +112,7 @@ We might come up with the following attributes to describe our data:
 Note that each of the attributes in and of itself, is more or less self descriptive.
 If something has a `cft.seq:timepoint` attribute, it's clear that it is a sequence and has timepoint data associated with it.
 
-We can use that to describe Trip data as follows:
+We can use that to describe Tripl data as follows:
 
 ```python
 data = [# some subjects
