@@ -12,6 +12,7 @@ problem RDF sets out to solve, as part of the vision of the Semantic Web. Yet wh
 goals, RDF has a number of features which make it very 
 """
 
+from __future__ import print_function
 import collections
 import uuid
 import json
@@ -23,9 +24,9 @@ import copy
 # ----
 
 def log(name, value):
-    print name
+    print(name)
     pprint.pprint(value)
-    print "\n"
+    print("\n")
 
 
 
@@ -279,7 +280,7 @@ class TripleStore(object):
             if ident_val:
                 # make sure no conflicting facts?
                 if any(id_facts.values()):
-                    print "Warning! Conflicting values in _resolve_eid!"
+                    print("Warning! Conflicting values in _resolve_eid!")
                 # Then we set the corresponding value in the _ids map
                 for a in id_facts:
                     _ids[a][fact_dict[a]] = ident_val
@@ -288,7 +289,7 @@ class TripleStore(object):
                 eids = set(v for v in id_facts.values() if v)
                 if eids:
                     if len(eids) > 1:
-                        print "Warning! Conflicting values in _resolve_eid (2)!"
+                        print("Warning! Conflicting values in _resolve_eid (2)!")
                     for e in eids:
                         eid = e
                 else:
@@ -482,7 +483,7 @@ class TripleStore(object):
                             eids = set(e for e, attrs in self._eav_index.iteritems()
                                          if eid in attrs[reverse])
                         else:
-                            print "Warning! Should have either lazy refs or or a schema for reverse lookups!"
+                            print("Warning! Should have either lazy refs or or a schema for reverse lookups!")
                     else:    
                         eids = _entity[attr]
                     if token == '...':
