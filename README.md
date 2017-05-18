@@ -80,7 +80,7 @@ Some notable differences from Datomic et al.:
 * default cardinality is (presently; this may be revised) `db.cardinality:many`, again to simplify coordination and defaulting to flexibility (Datomic requires a cardinality specification for each attribute, while DataScript defaults to `:db.cardinality/one`)
 * doesn't require specifying references before hand (lazily infers them, in contrast with both DataScript and Datomic)
 
-Files containing such data can be trivially merged (from the shell, `trip -i file1.trip.json file2.trip.json -o out.trip.json`; The `.trip` prefix is for clarity but totally optional), because all data is globally meaningful.
+Files containing such data can be trivially merged (from the shell, `tripl -i file1.trip.json file2.trip.json -o out.trip.json`; The `.trip` prefix is for clarity but totally optional), because all data is globally meaningful.
 So, as bioinformaticians, we enter this paradigm where we can conveniently spit out facts as json data scattered about our nested directory structures, and ingest that data as EAV triples, with a queryable, relational graph model.
 
 Targeting JSON, there's no limit to where this data can go.
@@ -98,7 +98,8 @@ It's still in draft, so details may change, but the flavor is as follows.
 For starters, let's create our triple store:
 
 ```python
-ts = TripleStore()
+from tripl import tripl
+ts = tripl.TripleStore()
 ```
 
 Let's start by imagining we have a project named `cft`.
@@ -210,12 +211,12 @@ It's worth pointing out here that we're implicitly treating each of these `cft.t
 # First let's construct some helpers for creating and working with this data
 
 def cft_cons(name):
-    return trip.entity_cons('cft.type:' + name, 'cft.' + name)
+    return tripl.entity_cons('cft.type:' + name, 'cft.' + name)
 
 subject = cft_cons('subject')
 seq = cft_cons('seq')
 timepoint = cft_cons('timepoint')
-tree_node = trip.entity_cons('cft.type:tree_node', 'cft.tree.node')
+tree_node = tripl.entity_cons('cft.type:tree_node', 'cft.tree.node')
 
 
 # Next our schema
@@ -228,7 +229,7 @@ schema = {
 
 ## Let's imagine the following data having been transacted in here
 
-ts = TripleStore(schema=schema, default_cardinality='db.cardinality:one')
+ts = tripl.TripleStore(schema=schema, default_cardinality='db.cardinality:one')
 
 
 # Now we can see our constructors in action :-)
