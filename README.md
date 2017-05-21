@@ -27,16 +27,17 @@ Datomic transactions can be map forms that look more or less like the sort of JS
 These maps are interpreted as entities, and nested maps as named relationships between entities.
 Relationships between entities can also be established in these map forms using unique integer ids or other unique attribute value pairs.
 Under the hood, all of this data is stored as Entity Attribute Value (EAV) triples, a model for graph data at the heart of the Semantic Web (RDF).
-At the end of the data, we get the flexible write model of a document store, with the read flexibility of a relational graph data.
+At the end of the day, we get the flexible write model of a document store, with the read flexibility of a relational graph data.
 
 A key feature of RDF that inspired Datomic was that of global statement of fact.
-RDF data designed so that the smallest bit of information - the triple fact - is globally meaningful.
+RDF data is designed so that even the smallest bit of information - the EAV triple (fact) - is globally meaningful.
 It does this by using unique URIs for object and predicate identifiers.
-Datomic simplifies buy-in here through the use of namespaced keywords for attributes (and schema identities).
+Datomic simplifies buy-in here through the use of namespaced keywords for attributes (and schema identities), and database specific integer ids for identity.
 
-All of this is fine and dandy, but we asked for a _format_, and Datomic is a database.
-RDF has formats, but they come with and are complicated by the burden of URIs for global interpretability, intricacies of object metadata, etc.
-We could just write "Datomic transaction like" data to files, but there are various pitfalls here that don't apply in a centralized database setting, and limitations in transactions that might not apply towards other settings.
+All of this is fine and dandy for Datomic as a database.
+But what would this idea look like as a more general _format_?
+RDF has formats, but they are generally complicated by the burden of URIs for global interpretability, intricacies of object metadata, etc.
+We could just write "Datomic transaction like" data to files, but there are various details of its design that don't quite make sense in this setting.
 How would we formalize and simplify this idea?
 How would we interact with this data?
 
