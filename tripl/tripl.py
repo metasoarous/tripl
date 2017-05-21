@@ -12,6 +12,7 @@ problem RDF sets out to solve, as part of the vision of the Semantic Web. Yet wh
 goals, RDF has a number of features which make it very 
 """
 
+from __future__ import print_function
 import collections
 import uuid
 import json
@@ -23,9 +24,9 @@ import copy
 # ----
 
 def log(name, value):
-    print name
+    print(name)
     pprint.pprint(value)
-    print "\n"
+    print("\n")
 
 
 
@@ -189,7 +190,7 @@ class TripleStore(object):
         eid = self.assert_fact({self.ident_attr: 'db:schema',
                                 'db:attributes': [
                                     attr_entity(attr, attr_schema)
-                                    for attr, attr_schema in schema.iteritems()]})
+                                    for attr, attr_schema in schema.items()]})
         return eid
 
     def schema(self, attr=None, meta_attr=None):
@@ -279,7 +280,7 @@ class TripleStore(object):
             if ident_val:
                 # make sure no conflicting facts?
                 if any(id_facts.values()):
-                    print "Warning! Conflicting values in _resolve_eid!"
+                    print("Warning! Conflicting values in _resolve_eid!")
                 # Then we set the corresponding value in the _ids map
                 for a in id_facts:
                     _ids[a][fact_dict[a]] = ident_val
@@ -288,7 +289,7 @@ class TripleStore(object):
                 eids = set(v for v in id_facts.values() if v)
                 if eids:
                     if len(eids) > 1:
-                        print "Warning! Conflicting values in _resolve_eid (2)!"
+                        print("Warning! Conflicting values in _resolve_eid (2)!")
                     for e in eids:
                         eid = e
                 else:
@@ -303,7 +304,7 @@ class TripleStore(object):
     def _assert_dict(self, fact_dict, id_attrs=None, _ids=None):
         # Is it possible to middleware-factor local db:id vs global db:ident :vs native uuid or tuples?
         eid = self._resolve_eid(fact_dict, id_attrs=id_attrs, _ids=_ids)
-        for a, v in fact_dict.iteritems():
+        for a, v in fact_dict.items():
             if isinstance(v, list):
                 self._assert_vals(eid, a, v, id_attrs=id_attrs, _ids=_ids)
             else:
@@ -339,8 +340,8 @@ class TripleStore(object):
         it's eav index, thereby merging the graphs :-)"""
         if isinstance(facts, dict):
             # Then merge as an eav index of values
-            for e, d in facts.iteritems():
-                for a, vs in d.iteritems():
+            for e, d in facts.items():
+                for a, vs in d.items():
                     for v in vs:
                         # May be more lookup time than if we look up and remember the nested dicts as we go
                         self.assert_fact((e, a, v))
@@ -412,11 +413,11 @@ class TripleStore(object):
     def _entity_match(self, entity, pattern):
         "For a match, at least one of the pattern options must match"
         return all(entity[k].intersection(v if (isinstance(v, list) or isinstance(v, set)) else [v])
-                   for k, v in pattern.iteritems())
+                   for k, v in pattern.items())
 
     def match_pattern(self, pattern):
         return set(eid for eid, entity
-                       in self._eav_index.iteritems()
+                       in self._eav_index.items()
                        if self._entity_match(entity, pattern))
 
     def pull(self, pull_expr, entity,
@@ -464,13 +465,13 @@ class TripleStore(object):
                     pull_data[reverse_lookup] = self.pull([{lookup: [self.ident_attr]}], eid)[reverse_lookup]
             # Handle * attrs
             if '*' in attr_patterns:
-                for a, vs in _entity.iteritems():
+                for a, vs in _entity.items():
                     if a not in pull_data:
                         pull_data[a] = vs # cardinality schema?
             # Deal with the dict patterns, which correspond with relations/refs (implicit are fine; though
             # need to think about the details of how defaults and options work out)
             for dict_pattern in dict_patterns:
-                for attr, token in dict_pattern.iteritems():
+                for attr, token in dict_pattern.items():
                     reverse = reverse_lookup(attr)
                     if reverse:
                         # Then reverse lookup
@@ -479,10 +480,10 @@ class TripleStore(object):
                             eids = self._vae_index[eid][reverse]
                         elif self.lazy_refs:
                             # have to search through all triples
-                            eids = set(e for e, attrs in self._eav_index.iteritems()
+                            eids = set(e for e, attrs in self._eav_index.items()
                                          if eid in attrs[reverse])
                         else:
-                            print "Warning! Should have either lazy refs or or a schema for reverse lookups!"
+                            print("Warning! Should have either lazy refs or or a schema for reverse lookups!")
                     else:    
                         eids = _entity[attr]
                     if token == '...':
@@ -502,7 +503,7 @@ class TripleStore(object):
                                          _seen_entities=_seen_entities)
                                for e in eids]
                     pull_data[attr] = results
-            for a, vs in pull_data.iteritems():
+            for a, vs in pull_data.items():
                 pull_data[a] = some(vs) if self._card_one(a) else vs
             return pull_data
             # ctn...
@@ -525,8 +526,8 @@ class TripleStore(object):
 def entity_cons(type_name, default_attr_base):
     "Return a constructor function for creating namespaced entities"
     def f(**avs):
-        avs = dict(((default_attr_base + ':' + k if ':' not in k else k), v) for k, v in avs.iteritems())
-        avs['cft:type'] = type_name
+        avs = dict(((default_attr_base + ':' + k if ':' not in k else k), v) for k, v in avs.items())
+        avs[type_name.split('.')[0] + ':type'] = type_name
         return avs
     return f
 
