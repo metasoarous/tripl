@@ -1,33 +1,33 @@
 
 # Tripl
 
-A data format for "all the things", inspired by Datomic and the Semantic Web.
+A data format for "all the things", inspired by Datomic and the Semantic Web that has
 
-* explicit meaning and context
+* explicit, global meaning and context
+* an easy document-store like write semantic
 * capable of expressing arbitrary graph data
-* extensible and polymorphic with globally meaningful attribute identities
-* targets JSON format for reach and interoperability
-* simpler buy-in model than RDF
-* a command line tool for working with such data
-* utilities for spitting/slurping this data to/from other formats and stores
-* the ability to describe entities pointing to files of external data, and how to interpret them
+* is extensible and polymorphic
+* primarily targets JSON for reach and interoperability
+* theoretical underpinnings in RDF, with a simpler data-oriented buy-in model
 
-A python library for working with Tripl data, and for the moment, the canonical Tripl implementation.
+Tripl can be created and used from any language with a natural interpretation of JSON data.
+However, getting the most out of the implied graph structure of the data requires some tooling.
+(Thought not much! The first passable version of this tool was only 120 LOC!)
+
+This repository contains a python library for working with this data programatically from python, and will evolve into a command line tool for working with this data.
 
 
-## Problem statement
-
-What if you could only have one data format for all your data?
-How would you structure it?
+## Vision
 
 NoSQL document stores have of late gained popularity for their tremendous flexibility and ease of entry.
 The problem is that once you want to access the data in a different way, you're locked in to the ad hoc schema you hacked together that one night.
 
 The Datomic database owes some of it's success to having brought sanity to this madness.
 Datomic transactions can be map forms that look more or less like the sort of JSON document you might throw into a Mongo store.
-The biggest difference is that it adds a more general mechanism for creating relationships between objects using unique integer ids or an attribute value pair uniquely defining the entity of interest.
-These nested map forms are translated into a collection of Entity Attribute Value (EAV) triples  (much like the Object, Predicate, Value (OPV) triples/facts of RDF), and persisted.
-Thus, we get the flexible write model of a document store, with the full power of a relational graph database.
+These maps are interpreted as entities, and nested maps as named relationships between entities.
+Relationships between entities can also be established in these map forms using unique integer ids or other unique attribute value pairs.
+Under the hood, all of this data is stored as Entity Attribute Value (EAV) triples, a model for graph data at the heart of the Semantic Web (RDF).
+At the end of the data, we get the flexible write model of a document store, with the read flexibility of a relational graph data.
 
 A key feature of RDF that inspired Datomic was that of global statement of fact.
 RDF data designed so that the smallest bit of information - the triple fact - is globally meaningful.
