@@ -271,10 +271,10 @@ pprint.pprint(list(pull_data))
 
 
 # Save out to file
-ts.dump_file('test.json')
+ts.dump('test.json')
 
 # Reload; note that schema is persisted
-ts2 = TripleStore.load_file('test.json')
+ts2 = TripleStore.load('test.json')
 
 # Reproducibility :-)
 pprint.pprint(list(ts2.pull_many(pull_expr, {'cft:type': 'cft.type:seq'})))
