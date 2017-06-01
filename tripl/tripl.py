@@ -117,7 +117,11 @@ def some(xs, default=None):
 
 
 class TripleStore(object):
-    def __init__(self, schema=None, facts=None, lazy_refs=None, default_cardinality=None, types=None, ident_attr="db:ident"):
+    #def __new__(cls, schema=None, facts=None):
+        #if 
+        
+    def __init__(self, schema=None, facts=None, lazy_refs=None, default_cardinality=None, types=None,
+            ident_attr="db:ident", id_attrs=None):
         """Construct a new TripleStore instance, with the optional facts attribute asserted as via
         assert_facts. The schema can be specified by the facts data, by the schema attribute, and by the
         global default setting kw attrs in this signature, and precedence is taken in that order.
@@ -140,7 +144,7 @@ class TripleStore(object):
         self.ident_attr = ident_attr
         self.assert_facts(base_schema(self.ident_attr))
         if facts:
-            self.assert_facts(facts)
+            self.assert_facts(facts, id_attrs=id_attrs)
 
         # 2. Load schema, if specified
         if schema:
@@ -151,11 +155,9 @@ class TripleStore(object):
         schema_pull = self.pull(['*'], 'db:schema')
         lazy_refs = lazy_refs or some(schema_pull.get('db.refs:lazy'))
         self.lazy_refs = True if lazy_refs == None else lazy_refs
+        # Setting default cardinality
         default_cardinality = default_cardinality or some(schema_pull.get('db.cardinality:default'))
         self.default_cardinality = 'db.cardinality:many' if default_cardinality == None else default_cardinality
-        #print "SETTING DEFAULT CARDINALITY!", self.default_cardinality
-        #print "Pulled CARDINALITY!", some(schema_pull.get('db.cardinality:default'))
-        #print "default cardinality?", default_cardinality
         self.assert_fact({
             self.ident_attr: 'db:schema',
             'db.refs:lazy': self.lazy_refs,
@@ -165,8 +167,13 @@ class TripleStore(object):
         self.types = types
         # other indices to follow possibly; well see what DS does
         # Reload facts to flush out indices, constraints, etc. (will this be safe?)
-        if facts:
-            self.assert_facts(facts)
+        # No! Not safe! Duplicates!
+        # Like... if schema has changed, create a new tripl store with explicit schema, and then return that?
+        # Have to do this in new above
+        # Or... can we just think through the things that need to be flushed and do that post schema change in
+        # update? That seems to be the sanest way if we don't want to have to specify schema everywhere
+        #if facts:
+            #self.assert_facts(facts, id_attrs=id_attrs)
 
     # This could get rather interesting...
     # Only semi-public for the moment
@@ -276,26 +283,25 @@ class TripleStore(object):
     def _resolve_eid(self, fact_dict, id_attrs=None, _ids=None):
         ident_val = fact_dict.get(self.ident_attr)
         if id_attrs:
-            id_facts = {a: _ids[a].get(fact_dict[a]) for a in id_attrs if a in fact_dict}
+            # This is not particularly efficient; should be using an aev or ave index
+            id_facts = {a: _ids[a].get(fact_dict[a]) or some(self.match_pattern({a: fact_dict[a]}))
+                        for a in id_attrs if a in fact_dict}
             if ident_val:
                 # make sure no conflicting facts?
                 if any(id_facts.values()):
                     print("Warning! Conflicting values in _resolve_eid!")
-                # Then we set the corresponding value in the _ids map
-                for a in id_facts:
-                    _ids[a][fact_dict[a]] = ident_val
                 eid = ident_val
             else:
                 eids = set(v for v in id_facts.values() if v)
                 if eids:
                     if len(eids) > 1:
                         print("Warning! Conflicting values in _resolve_eid (2)!")
-                    for e in eids:
-                        eid = e
+                    eid = some(eids)
                 else:
                     eid = uuid.uuid1()
-                    for k in id_facts:
-                        _ids[k][fact_dict[k]] = eid
+            # Set the corresponding value in ids map for future
+            for k in id_facts:
+                _ids[k][fact_dict[k]] = eid
         else:
             eid = ident_val or uuid.uuid1()
         return str(eid)
@@ -354,28 +360,25 @@ class TripleStore(object):
                 self.assert_fact(fact, id_attrs=id_attrs, _ids=_ids)
 
     @classmethod
-    def load_file(cls, filename, schema=None): # add format option eventually?
+    def load(cls, filename, schema=None, id_attrs=None): # add format option eventually?
         "Load data from a JSON file, and assert as with assert_facts."
         with open(filename, 'rb') as fp:
             data = json.load(fp)
-            return cls(facts=data, schema=schema)
+            return cls(facts=data, schema=schema, id_attrs=id_attrs)
 
     @classmethod
-    def load_files(cls, filenames, schema=None):
+    def loads(cls, filenames, schema=None, id_attrs=None):
         """Load data as with load_file, but reduces over facts from all filenames. Takes the schema from the
         first file as default for the global defaults schema parameters. Per attribute schema should absorb
         from each though."""
-        result = None
-        for filename in filenames:
-            new_graph = cls.load_file(filename, schema=schema)
-            # Reduce down this way so that we get the schema from the first file
-            if result:
-                result.assert_facts(new_graph)
-            else:
-                result = new_graph
+        result = cls.load(filenames[0], schema=schema, id_attrs=id_attrs)
+        for filename in filenames[1:]:
+            with open(filename, 'rb') as fp:
+                data = json.load(fp)
+                result.assert_facts(data, id_attrs=id_attrs)
         return result
 
-    def dump_file(self, filename):
+    def dump(self, filename):
         "Save semantic graph to a json file as an EAV index."
         with open(filename, 'w') as fp:
             json.dump(self._eav_index, fp, default=list)
@@ -447,7 +450,7 @@ class TripleStore(object):
         """
         if isinstance(entity, dict):
             eids = self.match_pattern(entity)
-            return self.pull(pull_expr, eids[0])
+            return self.pull(pull_expr, some(eids))
         else:
             eid = entity.eid if isinstance(entity, Entity) else entity
             _entity = self._eav_index[eid]
@@ -530,5 +533,12 @@ def entity_cons(type_name, default_attr_base):
         avs[type_name.split('.')[0] + ':type'] = type_name
         return avs
     return f
+
+
+def namespaced(namespace, **avs):
+    "Return a constructor function for creating namespaced entities"
+    avs = dict(((namespace + ':' + k if ':' not in k else k), v) for k, v in avs.items())
+    return avs
+
 
 
