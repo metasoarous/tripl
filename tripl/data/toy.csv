@@ -1,0 +1,5 @@
+virus,geo,sample,id,date,date_id
+EBOV,jena,s1,i1,2017-06-01,t1
+EBOV,jena,s2,i2,2017-06-01,t1
+EBOV,seattle,s3,i3,2017-06-03,t2
+IAV,seattle,s3,i4,2017-06-03,t2
