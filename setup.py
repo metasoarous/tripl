@@ -22,7 +22,7 @@ setup(name='tripl',
       packages=find_packages(),
       entry_points={
           'console_scripts': [
-              'trip = tripl.cli:main',
+              'tripl = tripl.cli:main',
           ]
       },
       #test_suite='tripl.test.suite',
