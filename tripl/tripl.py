@@ -28,56 +28,165 @@ def log(name, value):
     pprint.pprint(value)
     print("\n")
 
+def some(xs, default=None):
+    "return some thing from the set, or None if nothing"
+    if isinstance(xs, (str, unicode, int, float, bool, dict, Entity, uuid.UUID)):
+        return xs
+    else:
+        try:
+            return next(iter(xs))
+        except TypeError:
+            # Then not iterable
+            return xs if xs != None else default
+        except StopIteration:
+            # Then empty
+            return default
+
 
 
 # Now for the code:
 # =================
 
+
+class TupleIndex(object):
+    def __init__(self, depth=2, vals_container=set):
+        self.vals_container = vals_container
+        self.depth = depth
+        self.keys = {}
+
+    def __iter__(self):
+        for k, vs in self.keys:
+            if self.depth == 1:
+                for v in vs:
+                    yield k, v
+            else:
+                for tupl in v:
+                    yield (k,) + tupl
+
+    def get(self, tupl, default=None):
+        sub_index = self.keys.get(tupl[0])
+        if len(tupl) == 1:
+            return sub_index or default
+        else:
+            if sub_index:
+                return sub_index.get(tupl[1:]) or default
+        return default
+
+    def get_some(self, tupl):
+        return some(self.get(tupl))
+
+    def add(self, tupl):
+        sub_index = self.keys.get(tupl[0])
+        if len(tupl) == 2:
+            if not sub_index:
+                self.keys[tupl[0]] = self.vals_container()
+            self.keys[tupl[0]].add(tupl[1])
+        else:
+            if not sub_index:
+                sub_index = TupleIndex(depth=self.depth - 1, vals_container=self.vals_container)
+                self.keys[tupl[0]] = sub_index
+            sub_index.add(tupl[1:])
+
+    def retract(self, tupl):
+        sub_index = self.keys.get(tupl[0])
+        if sub_index and len(tupl) == 2:
+           sub_index.remove(tupl[1])
+        else:
+           sub_index.retract(tupl[1:])
+
+    def to_dict(self):
+        return {k: v.to_dict() if self.depth > 1 else v for k, v in self.keys.items()}
+
+    def contains(self, tupl):
+        return (tupl[0] in self.keys) \
+                and (len(tupl) == 1 \
+                     or (tupl[1] in self.keys
+                         if self.depth == 1
+                         else self.get([tupl[0]]).contains(tupl[1:])))
+
+
+
+
+#def _triple_index(vals_container=set):
+    #return collections.defaultdict(lambda: collections.defaultdict(vals_container))
+
 def _triple_index(vals_container=set):
-    return collections.defaultdict(lambda: collections.defaultdict(vals_container))
+    return TupleIndex()
 
 
 # Would be great to implement something analagous to the entity API, but would need to have schema I think
 # to traverse the references
 class Entity(object):
-    def __init__(self, graph, eid):
-        self.graph = graph
-        self.eid = eid
-        self._entity = graph._eav_index[eid]
+    def __init__(self, graph, ident, namespace=None):
+        self._graph = graph
+        # TODO Should allow for entity in leiu of ident
+        self.ident = ident
+        self._entity = graph._eav_index.get([ident])
+        # Question: Should we call this type or namespace?
+        self.namespace = namespace
+        self.namespace = namespace or graph._eav_index.get_some([ident, 'tripl:type'])
+
+    def __repr__(self):
+        r = self.namespace + ':' if self.namespace else ''
+        return r + str({k: self._entity.get([k]) for k in self.keys()})
 
     def __getitem__(self, key):
         # This is really the only magic to this object, over just looking at the EAV index
         # Should probably have these globally cached or something, so we don't create dups?
         # lazy_ref means that we allow you to infer relationships without assigning a reference type
-        if self.graph._ref_attr(key) or (self.graph.lazy_refs and self.graph._eav_index[key]):
-            return type(self)(self.graph, self.eid)
+        if self.namespace and len(key.split(':')) == 1:
+            return self.__getitem__(self.namespace + ':' + key)
+        if self._graph._ref_attr(key) or \
+                (self._graph.lazy_refs \
+                 and self._entity.get([key]) \
+                 and all(self._graph._eav_index.contains([v]) for v in self._entity.get([key]))):
+            return [type(self)(self._graph, ident) for ident in self._entity.get([key])]
         if str(key).split(':')[-1][0:1] == '_':
             namespace, name = key.split(':')
             name = name[1:]
             key = namespace + ':' + name
-            if self.graph._ref_attr(key):
-                return list(type(self)(self.graph, v) for v in self.graph._vae_index[self.eid][key])
+            if self._graph._ref_attr(key):
+                return list(type(self)(self._graph, v) for v in self._graph._vae_index.get([self.eid, key]))
             else:
                 # reverse lookups only supported currently with ref typing; need to generalize to do a scan if
                 # graph.lazy_refs is truthy; TODO
                 return []
         else:
-            return self._entity[key]
+            return self._entity.get([key])
+
+    def some(self, key, default=None):
+        return some(self[key], default=default)
+
+    def __getattr__(self, key):
+        if self.namespace and len(key.split(':')) == 1:
+            return self[self.namespace + ':' + key]
+        else:
+            return self[key]
 
     def __contains__(self, key):
-        if key in self._entity:
+        if key in self._entity.keys:
             return True
         else:
             if str(key).split(':')[-1][0:1] == '_':
                 key = key.replace('_', '')
-                return self.graph._ref_attr(key)
-
+                return self._graph._ref_attr(key)
 
     def __len__(self):
-        return len(self._entity)
+        return len(self._entity.keys)
 
     def keys(self):
-        return self._entity.keys()
+        if self._entity:
+            keys = self._entity.keys.keys()
+            if 'db:ident' not in keys:
+                return ['db:ident'] + keys
+            return keys
+        else:
+            return []
+
+
+#def generate_entity_class(name, namespace):
+    #return type(name, (Entity), {
+
 
 
 def reverse_lookup(attr_name):
@@ -103,17 +212,6 @@ def base_schema(ident_attr):
                   'db:cardinality': 'db.cardinality:one'},
                  {ident_attr: 'db.cardinality:default',
                   'db.cardinality': 'db.cardinality:one'}]}]
-
-def some(xs, default=None):
-    "return some thing from the set, or None if nothing"
-    try:
-        return next(iter(xs))
-    except TypeError:
-        # Then not iterable
-        return xs if xs != None else default
-    except StopIteration:
-        # Then empty
-        return default
 
 
 class TripleStore(object):
@@ -178,12 +276,10 @@ class TripleStore(object):
     # This could get rather interesting...
     # Only semi-public for the moment
 
-    def entity(self, eid):
+    def entity(self, eid, namespace=None):
         "Return a read only entity dict representation for a given eid."
-        return Entity(self, eid)
+        return Entity(self, eid, namespace=namespace)
 
-    def entities(self, eids):
-        return map(self.entity, eids)
 
     # Should define triples iterator
     # Define write to file
@@ -204,12 +300,13 @@ class TripleStore(object):
         if attr and meta_attr:
             # This could be optimized
             #return some(self.schema(attr).get(meta_attr))
-            return self._eav_index[attr][meta_attr]
+            return self._eav_index.get([attr, meta_attr])
         elif attr:
             # Could work to get the cards right here
-            return dict(self._eav_index[attr])
+            _entity = self._eav_index.get([attr])
+            return _entity.to_dict().copy() if _entity else {} # Will this work? XXX
         else:
-            return [self.schema(a) for a in self._eav_index['db:schema']['db:attributes']]
+            return [self.schema(a) for a in self._eav_index.get(['db:schema', 'db:attributes'])]
 
 
     # Some implementation details:
@@ -247,23 +344,23 @@ class TripleStore(object):
     def _assert_triple(self, triple):
         e, a, v = triple
         # First if cardinality one, remove any other values
-        if self._card_one(a) and self._eav_index[e][a]:
-            for x in self._eav_index[e][a]:
+        if self._card_one(a) and self._eav_index.get([e, a]):
+            for x in self._eav_index.get([e, a]).copy():
                 if x != v:
-                    self._retract_triple(self, (e, a, x))
+                    self._retract_triple((e, a, x))
         # Add the canonical eav index
-        self._eav_index[e][a].add(v)
+        self._eav_index.add([e, a, v])
         if self._ref_attr(a):
-            self._vae_index[v][a].add(e)
+            self._vae_index.add([v, a, e])
         # And a lazy index of 
 
     def _retract_triple(self, triple):
         e, a, v = triple
         # Have to be careful here; remove only removes the first entry; Should just be using sets
-        self._eav_index[e][a].remove(v)
-        reverse_index = self._vae_index[v]
+        self._eav_index.remove([e, a, v])
+        reverse_index = self._vae_index.get([v])
         if reverse_index:
-            reverse_attr_index = reverse_index[a]
+            reverse_attr_index = reverse_index.get([a])
             if reverse_attr_index and e in reverse_attr_index:
                 reverse_attr_index.remove(e)
 
@@ -281,7 +378,7 @@ class TripleStore(object):
             self._assert_val(e, a, val, id_attrs=id_attrs, _ids=_ids)
 
     def _resolve_eid(self, fact_dict, id_attrs=None, _ids=None):
-        ident_val = fact_dict.get(self.ident_attr)
+        ident_val = some(fact_dict.get(self.ident_attr))
         if id_attrs:
             # This is not particularly efficient; should be using an aev or ave index
             id_facts = {a: _ids[a].get(fact_dict[a]) or some(self.match_pattern({a: fact_dict[a]}))
@@ -353,6 +450,7 @@ class TripleStore(object):
                         self.assert_fact((e, a, v))
         elif isinstance(facts, TripleStore):
             # TODO; think about what id_attrs might mean here
+            # Mmmm... need to update? use to_dict if needed...
             self.assert_facts(facts._eav_index)
         else:
             _ids = _ids or collections.defaultdict(dict)
@@ -381,7 +479,7 @@ class TripleStore(object):
     def dump(self, filename):
         "Save semantic graph to a json file as an EAV index."
         with open(filename, 'w') as fp:
-            json.dump(self._eav_index, fp, default=list)
+            json.dump(self._eav_index.to_dict(), fp, default=list)
 
 
     # # Now our query engine
@@ -415,13 +513,17 @@ class TripleStore(object):
 
     def _entity_match(self, entity, pattern):
         "For a match, at least one of the pattern options must match"
-        return all(entity[k].intersection(v if (isinstance(v, list) or isinstance(v, set)) else [v])
+        return all(entity.get([k], set()).intersection(v if (isinstance(v, list) or isinstance(v, set)) else [v])
                    for k, v in pattern.items())
 
+    # Should probably rename just match, instead of match pattern; then can do match_some for get first?
     def match_pattern(self, pattern):
         return set(eid for eid, entity
-                       in self._eav_index.items()
+                       in self._eav_index.keys.items()
                        if self._entity_match(entity, pattern))
+
+    def entities(self, pattern, namespace=None):
+        return [self.entity(some(ident), namespace=namespace) for ident in self.match_pattern(pattern)]
 
     def pull(self, pull_expr, entity,
              _seen_entities=None, _base_pattern=None):
@@ -453,7 +555,7 @@ class TripleStore(object):
             return self.pull(pull_expr, some(eids))
         else:
             eid = entity.eid if isinstance(entity, Entity) else entity
-            _entity = self._eav_index[eid]
+            _entity = self._eav_index.get([eid])
             _seen_entities = _seen_entities or {eid} # seed the seen entities if needed
             dict_patterns = filter(lambda x: isinstance(x, dict), pull_expr)
             attr_patterns = filter(lambda x: not(isinstance(x, dict)), pull_expr)
@@ -461,14 +563,14 @@ class TripleStore(object):
             # QUESTION Do we want to return an id dictionary when we know it's a ref? who should we copy?
             normal_attributes = filter(lambda x: x not in {'*'} and not reverse_lookup(x), attr_patterns)
             reverse_lookups = filter(reverse_lookup, attr_patterns)
-            pull_data = {attr: _entity[attr] for attr in normal_attributes}
+            pull_data = {attr: _entity.get([attr]) for attr in normal_attributes}
             # Handling reverse lookups at base attr_patterns (not in the dict_patterns)
             if reverse_lookups:
                 for lookup in reverse_lookups:
                     pull_data[reverse_lookup] = self.pull([{lookup: [self.ident_attr]}], eid)[reverse_lookup]
             # Handle * attrs
             if '*' in attr_patterns:
-                for a, vs in _entity.items():
+                for a, vs in _entity.keys.items():
                     if a not in pull_data:
                         pull_data[a] = vs # cardinality schema?
             # Deal with the dict patterns, which correspond with relations/refs (implicit are fine; though
@@ -480,11 +582,11 @@ class TripleStore(object):
                         # Then reverse lookup
                         if self._ref_attr(reverse):
                             # Can do this; have reverse mapping indexed (vae)
-                            eids = self._vae_index[eid][reverse]
+                            eids = self._vae_index.get([eid, reverse])
                         elif self.lazy_refs:
                             # have to search through all triples
-                            eids = set(e for e, attrs in self._eav_index.items()
-                                         if eid in attrs[reverse])
+                            eids = set(e for e, attrs in self._eav_index.keys.items()
+                                         if eid in attrs.get([reverse]))
                         else:
                             print("Warning! Should have either lazy refs or or a schema for reverse lookups!")
                     else:    
