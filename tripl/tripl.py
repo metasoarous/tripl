@@ -513,11 +513,13 @@ class TripleStore(object):
 
     def _entity_match(self, entity, pattern):
         "For a match, at least one of the pattern options must match"
-        return all(entity.get([k], set()).intersection(v if (isinstance(v, list) or isinstance(v, set)) else [v])
+        return all(entity.get([k], set()).intersection(v if isinstance(v, (list, set)) else [v])
                    for k, v in pattern.items())
 
     # Should probably rename just match, instead of match pattern; then can do match_some for get first?
     def match_pattern(self, pattern):
+        xf_subpattern = lambda v: (self.match_pattern(v) if isinstance(v, dict) else v)
+        pattern = {k: xf_subpattern(v) for k, v in pattern.items()}
         return set(eid for eid, entity
                        in self._eav_index.keys.items()
                        if self._entity_match(entity, pattern))
