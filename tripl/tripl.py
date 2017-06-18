@@ -100,7 +100,7 @@ class TupleIndex(object):
     def contains(self, tupl):
         return (tupl[0] in self.keys) \
                 and (len(tupl) == 1 \
-                     or (tupl[1] in self.keys
+                     or (tupl[1] in self.keys[tupl[0]]
                          if self.depth == 1
                          else self.get([tupl[0]]).contains(tupl[1:])))
 
@@ -147,9 +147,11 @@ class Entity(object):
             key = namespace + ':' + name
             if self._graph._ref_attr(key):
                 return list(type(self)(self._graph, v) for v in self._graph._vae_index.get([self.eid, key]))
+            elif self._graph.lazy_refs:
+                return list(type(self)(self._graph, v)
+                            for v in self._graph._eav_index.keys
+                            if self._graph._eav_index.contains((v, key, self.ident)))
             else:
-                # reverse lookups only supported currently with ref typing; need to generalize to do a scan if
-                # graph.lazy_refs is truthy; TODO
                 return []
         else:
             return self._entity.get([key])
