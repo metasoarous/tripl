@@ -99,10 +99,10 @@ class TupleIndex(object):
 
     def contains(self, tupl):
         return (tupl[0] in self.keys) \
-                and (len(tupl) == 1 \
-                     or (tupl[1] in self.keys[tupl[0]]
-                         if self.depth == 1
-                         else self.get([tupl[0]]).contains(tupl[1:])))
+               and (len(tupl) == 1 \
+                    or (tupl[1] in self.keys[tupl[0]]
+                        if self.depth == 1
+                        else self.get([tupl[0]]).contains(tupl[1:])))
 
 
 
