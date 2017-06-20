@@ -12,6 +12,8 @@ import SCons.Node
 from Bio import SeqIO
 from Bio import Phylo
 
+import bio
+
 #import tripl
 
 
@@ -43,7 +45,6 @@ def _create_metadata_file(source, target, env):
 def ingest_seqs(filename):
     seqs = SeqIO.parse(filename, 'fasta')
     return {'bio.seq:set': [{'bio.seq:id': seq.id, 'bio.seq:seq': str(seq.seq)} for seq in seqs]}
-
 
 
 def ingest_newick(filename):
@@ -79,6 +80,12 @@ def _ingest_metadata_files(source, target, env):
         fmt = other_file.split('.')[-1]
         if fmt in {'fasta', 'fa'}:
             v.update(ingest_seqs(other_file))
+        if fmt in {'csv'}:
+            # ugg... to get the right attr_map from attr_maps, we need to be able to map the filepaths to tgt
+            # names
+            name_mappings = env.get('name_mappings', {})
+            attr_map = env.get('attr_maps', {}).get(name_mappings.get(other_file), {})
+            v.update({'tripl.csv:data': list(bio.load_csv(other_file, attr_map))})
         #if fmt in {'newick', 'nw', 'nwk'}:
             #v.update(ingest_newick(other_file))
         doc['tripl:aggregate'].append(v)
@@ -211,7 +218,7 @@ class NestWrap(object):
         return return_val
 
     # add namespace arg here?
-    def add_target(self, name=None, metadata=None, omit_metadata=False, ingest=False):
+    def add_target(self, name=None, metadata=None, omit_metadata=False, ingest=False, attr_map=None):
         def deco(f):
             real_name = f.__name__ or name
             real_name = name or f.__name__
@@ -220,6 +227,7 @@ class NestWrap(object):
                     'doc': f.__doc__,
                     'metadata': metadata,
                     'nest': self.current_nest,
+                    'attr_map': attr_map,
                     'ingest': ingest,
                     'omit_metadata': omit_metadata or real_name[0:1] == '_'}
             self.nest_levels[self.current_nest]['targets'].add(real_name)
@@ -377,7 +385,9 @@ class NestWrap(object):
                                [pre_ingest_tgt] + ingest_tgts,
                                action=_ingest_metadata_files,
                                metadata_dict=translated_metadata,
-                               file_idents=self.file_idents)
+                               file_idents=self.file_idents,
+                               name_mappings={str(tripl.some(v)): c_k for c_k, v in c.items()},
+                               attr_maps={k: target['attr_map'] for k, target in self.targets.items()})
             env.Depends(pre_agg_tgt, pre_ingest_tgt)
             env.AlwaysBuild(pre_agg_tgt)
             # If we're doing a full dump then we also want to aggregate over all the other data that's been

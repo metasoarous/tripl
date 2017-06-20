@@ -20,7 +20,7 @@ def _traverse(obj, callback=None):
         return callback(value)
 
 
-def _traverse_modify(data, obj, ns):  # ns .. namespace, data as dict
+def _traverse_modify(data, obj, ns=None):  # ns .. namespace, data as dict
     '''Traverse nested hash map and replace keys.
     Function that traverses and modifies a nested hash map (JSON format).
     Basically it substitutes keys using a map provided by the user. This map serves
@@ -59,18 +59,18 @@ def _traverse_modify(data, obj, ns):  # ns .. namespace, data as dict
             return value
 
         if isinstance(value, dict):
-            entity = set()
-            vc = value.copy()  # vc .. value copy
+            #entity = set()
+            vc = {}
             # copy because iterate + mutate = bad idea, stackoverflow, 3346696
-            for i in value.keys():
-                entity.add(i.split(':')[0])
-                vc[ns + '.' + i] = value[i]
-                del vc[i]
+            for a, a_ in obj.items():
+                a = ns + ':' + a if ns and len(a.split(':')) > 1 else a
+                vc[a] = value.get(a)
 
-            assert len(entity) == 1, \
-                'The keys in the attribute map (obj) suggest heterogenous types.'
+            #assert len(entity) == 1, \
+                #'The keys in the attribute map (obj) suggest heterogenous types.'
 
-            vc.update({ns + ':type': ns + '.type:' + entity.pop()})
+            if ns:
+                vc.update({'tripl:type': ns})
             return vc
         else:
             return data.get(value, None)
@@ -78,7 +78,7 @@ def _traverse_modify(data, obj, ns):  # ns .. namespace, data as dict
     return _traverse(obj, callback=transformer)
 
 
-def load_csv(fp, attr_map, ns):
+def load_csv(fp, attr_map, ns=None):
     '''Turn CSV cells into triples.
     A helper function to turn data in CSV format into entity-attribute-value
     triples. The main ingredient that the user provides is an attribute map.
