@@ -459,6 +459,7 @@ class TripleStore(object):
             for fact in facts:
                 self.assert_fact(fact, id_attrs=id_attrs, _ids=_ids)
 
+    # Should have this as a method as well, and just move the class method out as a simple fn
     @classmethod
     def load(cls, filename, schema=None, id_attrs=None): # add format option eventually?
         "Load data from a JSON file, and assert as with assert_facts."
@@ -513,18 +514,26 @@ class TripleStore(object):
 
     # Going to start for now with the simple pull and match queries
 
-    def _entity_match(self, entity, pattern):
+    def _entity_match(self, eid, pattern):
         "For a match, at least one of the pattern options must match"
+        entity = self._eav_index.get([eid])
         return all(entity.get([k], set()).intersection(v if isinstance(v, (list, set)) else [v])
                    for k, v in pattern.items())
+
+    def _entity_ref_matches(self, pattern):
+        return reduce(set.intersection, (self._vae_index.get([v, a], set()) for a, v in pattern.items()))
 
     # Should probably rename just match, instead of match pattern; then can do match_some for get first?
     def match_pattern(self, pattern):
         xf_subpattern = lambda v: (self.match_pattern(v) if isinstance(v, dict) else v)
         pattern = {k: xf_subpattern(v) for k, v in pattern.items()}
-        return set(eid for eid, entity
-                       in self._eav_index.keys.items()
-                       if self._entity_match(entity, pattern))
+        ref_pattern = {k: v for k, v in pattern.items() if self._ref_attr(k)}
+        nonref_pattern = {k: v for k, v in pattern.items() if not self._ref_attr(k)}
+        eids = self._entity_ref_matches(ref_pattern) if ref_pattern else self._eav_index.keys.keys()
+        if nonref_pattern:
+            return set(eid for eid in eids if self._entity_match(eid, nonref_pattern))
+        else:
+            return eids
 
     def entities(self, pattern, namespace=None):
         return [self.entity(some(ident), namespace=namespace) for ident in self.match_pattern(pattern)]
