@@ -55,7 +55,7 @@ class TupleIndex(object):
         self.keys = {}
 
     def __iter__(self):
-        for k, vs in self.keys:
+        for k, vs in self.keys.items():
             if self.depth == 1:
                 for v in vs:
                     yield k, v
@@ -103,7 +103,6 @@ class TupleIndex(object):
                     or (tupl[1] in self.keys[tupl[0]]
                         if self.depth == 1
                         else self.get([tupl[0]]).contains(tupl[1:])))
-
 
 
 
@@ -239,6 +238,7 @@ class TripleStore(object):
         self.lazy_refs = True
         # Set up index
         self._eav_index = _triple_index(vals_container=set)
+        self._aev_index = _triple_index(vals_container=set)
         self._vae_index = _triple_index(vals_container=set)
         # This must be statically set for now? Should check compatibility with facts?
         self.ident_attr = ident_attr
@@ -352,6 +352,8 @@ class TripleStore(object):
                     self._retract_triple((e, a, x))
         # Add the canonical eav index
         self._eav_index.add([e, a, v])
+        self._aev_index.add([a, e, v])
+        # if it's a ref attribute, add a vae reference
         if self._ref_attr(a):
             self._vae_index.add([v, a, e])
         # And a lazy index of 
@@ -360,6 +362,7 @@ class TripleStore(object):
         e, a, v = triple
         # Have to be careful here; remove only removes the first entry; Should just be using sets
         self._eav_index.remove([e, a, v])
+        self._aev_index.remove([a, e, v])
         reverse_index = self._vae_index.get([v])
         if reverse_index:
             reverse_attr_index = reverse_index.get([a])
@@ -514,26 +517,21 @@ class TripleStore(object):
 
     # Going to start for now with the simple pull and match queries
 
-    def _entity_match(self, eid, pattern):
-        "For a match, at least one of the pattern options must match"
-        entity = self._eav_index.get([eid])
-        return all(entity.get([k], set()).intersection(v if isinstance(v, (list, set)) else [v])
-                   for k, v in pattern.items())
-
-    def _entity_ref_matches(self, pattern):
-        return reduce(set.intersection, (self._vae_index.get([v, a], set()) for a, v in pattern.items()))
+    def _entity_lookup(self, lookup):
+        attr, val = lookup
+        if self._ref_attr(attr):
+            return self._vae_index.get([val, attr], set())
+        else:
+            # we look up the index, and see if the vals pointed to intersect with the lookup val for each key in
+            # the pattern
+            lookup_vals = val if isinstance(val, (list, set)) else [val]
+            return set(eid for eid, vals in self._aev_index.get([attr]).keys.items() if vals.intersection(lookup_vals))
 
     # Should probably rename just match, instead of match pattern; then can do match_some for get first?
     def match_pattern(self, pattern):
         xf_subpattern = lambda v: (self.match_pattern(v) if isinstance(v, dict) else v)
         pattern = {k: xf_subpattern(v) for k, v in pattern.items()}
-        ref_pattern = {k: v for k, v in pattern.items() if self._ref_attr(k)}
-        nonref_pattern = {k: v for k, v in pattern.items() if not self._ref_attr(k)}
-        eids = self._entity_ref_matches(ref_pattern) if ref_pattern else self._eav_index.keys.keys()
-        if nonref_pattern:
-            return set(eid for eid in eids if self._entity_match(eid, nonref_pattern))
-        else:
-            return eids
+        return reduce(set.intersection, map(self._entity_lookup, pattern.items()))
 
     def entities(self, pattern, namespace=None):
         return [self.entity(some(ident), namespace=namespace) for ident in self.match_pattern(pattern)]
