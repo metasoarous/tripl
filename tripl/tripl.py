@@ -147,6 +147,9 @@ class Entity(object):
             if self._graph._ref_attr(key):
                 return list(type(self)(self._graph, v) for v in self._graph._vae_index.get([self.eid, key]))
             elif self._graph.lazy_refs:
+                return list(type(self)(self._graph, e)
+                            for e, vs in self._graph._aev_index.get([key]).keys.items()
+                            if self.ident in vs)
                 return list(type(self)(self._graph, v)
                             for v in self._graph._eav_index.keys
                             if self._graph._eav_index.contains((v, key, self.ident)))
