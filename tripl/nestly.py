@@ -355,7 +355,6 @@ class NestWrap(object):
 
 
     # All to accomodate this; the export of the control dictionary as a tripl json file
-    # TODO Need to add ingest steps for things flagged ingest=True
 
     def dump_metadata(self, env=None, target_name='_metadata', file_name='metadata.json', full_dump=True):
         env = env or self.scons_wrap.alias_environment
