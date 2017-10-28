@@ -1,5 +1,5 @@
 """
-Tripy - a python library for working with Trip semantic graph data inspired by Datomic, DataScript, and their
+Tripl - a python library for working with Trip semantic graph data inspired by Datomic, DataScript, and their
 roots in the Semantic Web.
 
 Trip is our working name for a simple data format, inspired by Datomic and DataScript's transaction forms, the
@@ -18,6 +18,7 @@ import uuid
 import json
 import pprint
 import copy
+import warnings
 
 
 # Util
@@ -42,6 +43,17 @@ def some(xs, default=None):
             # Then empty
             return default
 
+import time
+def profiled(f):
+    f_name = f.__name__
+    def f_(*args, **kw_args):
+        t0 = time.time()
+        print('starting call to', f_name)
+        result = f(*args, **kw_args)
+        print("function", f_name, "took", time.time() - t0, "seconds to complete")
+        return result
+    f_.__name__ = f_name
+    return f_
 
 
 # Now for the code:
@@ -80,7 +92,14 @@ class TupleIndex(object):
         if len(tupl) == 2:
             if not sub_index:
                 self.keys[tupl[0]] = self.vals_container()
-            self.keys[tupl[0]].add(tupl[1])
+            k = tupl[0]
+            try:
+                self.keys[k].add(tupl[1])
+            except TypeError as e:
+                warnings.warn("Unable to hash key: {}".format(k))
+                warnings.warn("Value is: {}".format(tupl[1]))
+                warnings.warn("Are you trying to write a list as an individual value? This is not supported by tripl.")
+                raise e
         else:
             if not sub_index:
                 sub_index = TupleIndex(depth=self.depth - 1, vals_container=self.vals_container)

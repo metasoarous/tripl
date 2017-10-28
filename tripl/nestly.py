@@ -273,18 +273,19 @@ class NestWrap(object):
 
 
     def _translate_target(self, c, a, v):
+        # Set some things up
         target = self.targets[a]
-        metadata = target['metadata'](c, v) if callable(target['metadata']) else (target['metadata'] or {})
         def relative_path(p):
             p = str(p)
             if p[0:1] != '/':
                 return os.path.relpath(p, c['_output_wrt'])
             else:
                 return p
-        if isinstance(v, dict):
-            v = copy.deepcopy(v)
-        elif isinstance(v, list) or isinstance(v, SCons.Node.NodeList):
+        # recurse for list like things
+        if isinstance(v, list) or isinstance(v, SCons.Node.NodeList):
             return [self._translate_target(c, a, v_) for v_ in v]
+        elif isinstance(v, dict):
+            v = copy.deepcopy(v)
         elif isinstance(v, SCons.Node.FS.Entry) or isinstance(v, SCons.Node.FS.File):
             # Can add more metadata here as needed
             ident = uuid.uuid3(c[self.nest_levels[self.current_nest]['ident_attr']], str(v))
@@ -293,7 +294,10 @@ class NestWrap(object):
                  'tripl.file:path': relative_path(v),
                  # This will be super cool...
                  'tripl.file:sources': [{'tripl.file:path': relative_path(p)} for p in v.sources]}
+        # This is where the metadata function gets called if it is callable
+        metadata = target['metadata'](c, v) if callable(target['metadata']) else (target['metadata'] or {})
         if isinstance(v, dict):
+            # Here we merge in the metadata
             v.update(metadata)
         elif metadata:
             metadata['tripl.nestly.target:value'] = v
@@ -301,6 +305,75 @@ class NestWrap(object):
         # TODO namespace all keywords
         return v
 
+    #KeyError: 'inseqs':
+      #File "/home/matsengrp/working/csmall/cft/SConstruct", line 774:
+        #w.pop('seed')
+      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 246:
+        #self._pop(env=env, file_name=file_name)
+      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 239:
+        #self.dump_metadata(env, file_name=file_name, full_dump=full_dump)
+      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 364:
+        #@self.add_target(name=target_name)
+      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 234:
+        #f_ = self.scons_wrap.add_target(real_name)(f)
+      #File "/home/csmall/.conda/envs/cft/lib/python2.7/site-packages/nestly/scons.py", line 153:
+        #self.nest.add(key, nestfunc, create_dir=False)
+      #File "/home/csmall/.conda/envs/cft/lib/python2.7/site-packages/nestly/core.py", line 174:
+        #for r in nestable(control):
+      #File "/home/csmall/.conda/envs/cft/lib/python2.7/site-packages/nestly/scons.py", line 151:
+        #return [func(destdir, control)]
+      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 366:
+        #translated_metadata = self._translated_metadata_dict(c, full_dump=full_dump)
+      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 333:
+        #v = c[a]
+
+    #def _translated_metadata_dict(self, c, base_nest_level=None, full_dump=False):
+        ##orig_base_nest_level = base_nest_level
+        #base_nest_level = base_nest_level or self.current_nest
+        #nest_level = self.nest_levels[base_nest_level]
+        #nest_id = nest_level['namespace'] + ':id'
+
+        ## Presumably the root if nothing else...
+        #nest_val = c.get(base_nest_level, {})
+
+        ## There's some question about whether computing the metadata function and merging and namespacing shouldn't all happen in one method
+        #d = self._namespaced(copy.deepcopy(nest_val), base_nest_level=base_nest_level) if isinstance(nest_val, dict) else {}
+        ## Here's the other place where we call the metadata function if applicable
+        #nest_metadata = nest_level['metadata']
+        #metadata = nest_metadata(c, nest_val) if callable(nest_metadata) else (nest_metadata or {})
+        #if isinstance(metadata, dict):
+            #d.update(self._namespaced(metadata, base_nest_level=base_nest_level))
+
+        #v_id = d.get(nest_id) \
+                #or (nest_level['label_func'](d or nest_val) if nest_level.get('label_func') else nest_val)
+        #d[nest_id] = v_id
+
+        ##for a, v in c.items():
+        ## there may be a bug here:
+        #for a in nest_level['targets']:
+            ## Don't want to transact "hidden" targets
+            #if a[0:1] != '_':
+                #v = c[a]
+                ## handle as a target val
+                #v = self._translate_target(c, a, v)
+                #d[self._namespaced(a, base_nest_level=base_nest_level)] = v
+
+        #d['db:ident'] = c[nest_level['ident_attr']]
+        #d['tripl:type'] = nest_level['namespace']
+
+        #def add_parent_attrs(parent_nest_level):
+            #if parent_nest_level:
+                #parent_nest = self.nest_levels[parent_nest_level]
+                #parent_ident_name = parent_nest['ident_attr']
+                #if nest_level['full_dump']:
+                    #d[self._namespaced(parent_nest_level)] = self._translated_metadata_dict(c, base_nest_level=parent_nest_level)
+                #else:
+                    #d[self._namespaced(parent_nest_level)] = {'db:ident': c[parent_ident_name]}
+                #if parent_nest['parent_nest']:
+                    #add_parent_attrs(parent_nest['parent_nest'])
+
+        #add_parent_attrs(nest_level['parent_nest'])
+        #return copy.deepcopy(d)
 
     def _translated_metadata_dict(self, c, base_nest_level=None, full_dump=False):
         #orig_base_nest_level = base_nest_level
@@ -311,22 +384,29 @@ class NestWrap(object):
         # Presumably the root if nothing else...
         nest_val = c.get(base_nest_level, {})
         nest_metadata = nest_level['metadata']
+        # Here's the other place where we call the metadata function if applicable
         metadata = nest_metadata(c, nest_val) if callable(nest_metadata) else (nest_metadata or {})
 
-        if isinstance(metadata, dict) and isinstance(nest_val, dict):
-            d = copy.deepcopy(nest_val)
-            d.update(self._namespaced(metadata, base_nest_level=base_nest_level))
-        else:
-            d = {}
 
+        # This is kind of stupid and should be changed... we end up recreating the metadata twice, once so that we
+        # can call the label func, and then the next so that we can actually construct what we end up returning.
+        # Not sure why, but if we don't do it this way, we end up getting a stackoverlow recursion. Still haven't
+        # sorted out why, but for now.
+        d = copy.deepcopy(nest_val) if isinstance(nest_val, dict) else {}
+        if isinstance(metadata, dict):
+            d.update(self._namespaced(metadata, base_nest_level=base_nest_level))
         v_id = d.get(nest_id) \
                 or (nest_level['label_func'](d or nest_val) if nest_level.get('label_func') else nest_val)
-        d = self._namespaced(metadata, base_nest_level=base_nest_level)
+
+        # This is where we construct the actual dictionary we're returning.
+        d = {}
         d[nest_id] = v_id
         if isinstance(nest_val, dict):
             d.update({self._namespaced(a, base_nest_level): v for a, v in nest_val.items()})
+        d.update(self._namespaced(metadata, base_nest_level=base_nest_level))
 
         #for a, v in c.items():
+        # there may be a bug here:
         for a in nest_level['targets']:
             # Don't want to transact "hidden" targets
             if a[0:1] != '_':
