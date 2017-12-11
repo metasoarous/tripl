@@ -108,6 +108,16 @@ def _ingest_aggregates(source, target, env):
 def _has_namespace(name):
     return len(name.split(':')) > 1
 
+def default_label(x):
+    if isinstance(x, str):
+        return x
+    if isinstance(x, dict):
+        return str(x.get('id'))
+    if isinstance(x, int) or isinstance(x, float):
+        return str(x)
+    else:
+        raise(Exception("Not able to label {} object {}".format(type(x), x)))
+
 class NestWrap(object):
     def __init__(self, scons_wrap, name='base', base_namespace=None, metadata=None, namespace=None, id_attrs=None,
             **kw_args):
@@ -164,7 +174,8 @@ class NestWrap(object):
     # This is the real meat of things as an interface:
     # ================================================
 
-    def add(self, name, nestable, namespace=None, metadata=None, full_dump=False, id_attrs=None, **kw_args):
+    def add(self, name, nestable, namespace=None, metadata=None, full_dump=False, id_attrs=None,
+            label_func=default_label, **kw_args):
         """Calls out to the scons_wrap add method, and contextually asserts the given id_attrs. Effectively
         defines a context in which all traversed data gets referenced, and upon which identity is asserted."""
         self.base_name = name
@@ -173,11 +184,12 @@ class NestWrap(object):
         # Do something with id_attrs and meta...
         parent_level = self.nest_levels[self.current_nest]
         aggregate_attr = '_' + namespace + ':aggregate'
+
         nest_level = {
             'name': name,
             'namespace': namespace,
             'metadata': metadata,
-            'label_func': kw_args.get('label_func', lambda x: x),
+            'label_func': label_func,
             # We want to know all parent id_attrs as well when merging down
             'id_attrs': (id_attrs or []) + self.nest_levels[self.current_nest]['id_attrs'],
             'ident_attr': namespace + '.db:ident',
@@ -192,8 +204,7 @@ class NestWrap(object):
         self.nest_levels[self.current_nest]['child_nests'].append(name)
         self.current_nest = name
 
-
-        return_val = self.scons_wrap.add(name, nestable, **kw_args)
+        return_val = self.scons_wrap.add(name, nestable, label_func=label_func, **kw_args)
         @self.add_target(name=nest_level['ident_attr'])
         def _ident_fn(outdir, c):
             parent_ident = c.get(parent_level.get('ident_attr'))
