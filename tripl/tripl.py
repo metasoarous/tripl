@@ -177,8 +177,45 @@ class Entity(object):
         else:
             return self._entity.get([key])
 
+
+    def get(self, key, default=None):
+        """Get a list of values corresponding to the given key (attribute).
+        
+        Note: Eventually we may treat schema in such a way where get returns the singular value for things
+        marked cardinality one."""
+        return self[key]
+
+    def get_in(self, keys, default=None):
+        """Recursive form of get, where keys is a list or tuple. Returns default if any key in the relation
+        trace ends up missing."""
+        if len(keys) == 0:
+            # does this make sense? return default instead?
+            return self
+        elif len(keys) == 1:
+            return self.get(keys[0])
+        else:
+            vals = self.get(keys[0])
+            if vals:
+                result = list(subval
+                              for val in vals
+                              for subval in (val.get_in(keys[1:]) or []))
+                return result or default
+            else:
+                return default
+
     def some(self, key, default=None):
+        """Like get, but returns a single value, instead of a list of values. Best used if you are expecting
+        just a single value. But be cautioned that there is no verification of this.
+        
+        Note: we may eventually add an option that raises an error if missing."""
         return some(self[key], default=default)
+
+    def some_in(self, keys, default=None):
+        """Like get_in, but returns a single value, instead of a list of values. Best used if you are expecting
+        just a single value. But be cautioned that there is no verification of this.
+        
+        Note: we may eventually add an option that raises an error if missing."""
+        return some(self.get_in(keys), default=default)
 
     def __getattr__(self, key):
         if self.namespace and len(key.split(':')) == 1:
