@@ -337,9 +337,12 @@ class TripleStore(object):
     # This could get rather interesting...
     # Only semi-public for the moment
 
-    def entity(self, eid, namespace=None):
+    def entity(self, eid_or_pattern, namespace=None):
         "Return a read only entity dict representation for a given eid."
-        return Entity(self, eid, namespace=namespace)
+        if isinstance(eid_or_pattern, dict):
+            return self.entity(some(self.match_pattern(eid_or_pattern)), namespace=namespace)
+        else:
+            return Entity(self, eid_or_pattern, namespace=namespace)
 
 
     # Should define triples iterator
