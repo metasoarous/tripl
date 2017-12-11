@@ -108,6 +108,16 @@ def _ingest_aggregates(source, target, env):
 def _has_namespace(name):
     return len(name.split(':')) > 1
 
+def default_label(x):
+    if isinstance(x, str):
+        return x
+    if isinstance(x, dict):
+        return str(x.get('id'))
+    if isinstance(x, int) or isinstance(x, float):
+        return str(x)
+    else:
+        raise(Exception("Not able to label {} object {}".format(type(x), x)))
+
 class NestWrap(object):
     def __init__(self, scons_wrap, name='base', base_namespace=None, metadata=None, namespace=None, id_attrs=None,
             **kw_args):
@@ -164,7 +174,8 @@ class NestWrap(object):
     # This is the real meat of things as an interface:
     # ================================================
 
-    def add(self, name, nestable, namespace=None, metadata=None, full_dump=False, id_attrs=None, **kw_args):
+    def add(self, name, nestable, namespace=None, metadata=None, full_dump=False, id_attrs=None,
+            label_func=default_label, **kw_args):
         """Calls out to the scons_wrap add method, and contextually asserts the given id_attrs. Effectively
         defines a context in which all traversed data gets referenced, and upon which identity is asserted."""
         self.base_name = name
@@ -173,11 +184,12 @@ class NestWrap(object):
         # Do something with id_attrs and meta...
         parent_level = self.nest_levels[self.current_nest]
         aggregate_attr = '_' + namespace + ':aggregate'
+
         nest_level = {
             'name': name,
             'namespace': namespace,
             'metadata': metadata,
-            'label_func': kw_args.get('label_func', lambda x: x),
+            'label_func': label_func,
             # We want to know all parent id_attrs as well when merging down
             'id_attrs': (id_attrs or []) + self.nest_levels[self.current_nest]['id_attrs'],
             'ident_attr': namespace + '.db:ident',
@@ -192,8 +204,7 @@ class NestWrap(object):
         self.nest_levels[self.current_nest]['child_nests'].append(name)
         self.current_nest = name
 
-
-        return_val = self.scons_wrap.add(name, nestable, **kw_args)
+        return_val = self.scons_wrap.add(name, nestable, label_func=label_func, **kw_args)
         @self.add_target(name=nest_level['ident_attr'])
         def _ident_fn(outdir, c):
             parent_ident = c.get(parent_level.get('ident_attr'))
@@ -305,75 +316,6 @@ class NestWrap(object):
         # TODO namespace all keywords
         return v
 
-    #KeyError: 'inseqs':
-      #File "/home/matsengrp/working/csmall/cft/SConstruct", line 774:
-        #w.pop('seed')
-      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 246:
-        #self._pop(env=env, file_name=file_name)
-      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 239:
-        #self.dump_metadata(env, file_name=file_name, full_dump=full_dump)
-      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 364:
-        #@self.add_target(name=target_name)
-      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 234:
-        #f_ = self.scons_wrap.add_target(real_name)(f)
-      #File "/home/csmall/.conda/envs/cft/lib/python2.7/site-packages/nestly/scons.py", line 153:
-        #self.nest.add(key, nestfunc, create_dir=False)
-      #File "/home/csmall/.conda/envs/cft/lib/python2.7/site-packages/nestly/core.py", line 174:
-        #for r in nestable(control):
-      #File "/home/csmall/.conda/envs/cft/lib/python2.7/site-packages/nestly/scons.py", line 151:
-        #return [func(destdir, control)]
-      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 366:
-        #translated_metadata = self._translated_metadata_dict(c, full_dump=full_dump)
-      #File "/home/matsengrp/working/csmall/cft/tripl/tripl/nestly.py", line 333:
-        #v = c[a]
-
-    #def _translated_metadata_dict(self, c, base_nest_level=None, full_dump=False):
-        ##orig_base_nest_level = base_nest_level
-        #base_nest_level = base_nest_level or self.current_nest
-        #nest_level = self.nest_levels[base_nest_level]
-        #nest_id = nest_level['namespace'] + ':id'
-
-        ## Presumably the root if nothing else...
-        #nest_val = c.get(base_nest_level, {})
-
-        ## There's some question about whether computing the metadata function and merging and namespacing shouldn't all happen in one method
-        #d = self._namespaced(copy.deepcopy(nest_val), base_nest_level=base_nest_level) if isinstance(nest_val, dict) else {}
-        ## Here's the other place where we call the metadata function if applicable
-        #nest_metadata = nest_level['metadata']
-        #metadata = nest_metadata(c, nest_val) if callable(nest_metadata) else (nest_metadata or {})
-        #if isinstance(metadata, dict):
-            #d.update(self._namespaced(metadata, base_nest_level=base_nest_level))
-
-        #v_id = d.get(nest_id) \
-                #or (nest_level['label_func'](d or nest_val) if nest_level.get('label_func') else nest_val)
-        #d[nest_id] = v_id
-
-        ##for a, v in c.items():
-        ## there may be a bug here:
-        #for a in nest_level['targets']:
-            ## Don't want to transact "hidden" targets
-            #if a[0:1] != '_':
-                #v = c[a]
-                ## handle as a target val
-                #v = self._translate_target(c, a, v)
-                #d[self._namespaced(a, base_nest_level=base_nest_level)] = v
-
-        #d['db:ident'] = c[nest_level['ident_attr']]
-        #d['tripl:type'] = nest_level['namespace']
-
-        #def add_parent_attrs(parent_nest_level):
-            #if parent_nest_level:
-                #parent_nest = self.nest_levels[parent_nest_level]
-                #parent_ident_name = parent_nest['ident_attr']
-                #if nest_level['full_dump']:
-                    #d[self._namespaced(parent_nest_level)] = self._translated_metadata_dict(c, base_nest_level=parent_nest_level)
-                #else:
-                    #d[self._namespaced(parent_nest_level)] = {'db:ident': c[parent_ident_name]}
-                #if parent_nest['parent_nest']:
-                    #add_parent_attrs(parent_nest['parent_nest'])
-
-        #add_parent_attrs(nest_level['parent_nest'])
-        #return copy.deepcopy(d)
 
     def _translated_metadata_dict(self, c, base_nest_level=None, full_dump=False):
         #orig_base_nest_level = base_nest_level
