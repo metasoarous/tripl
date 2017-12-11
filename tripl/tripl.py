@@ -297,14 +297,6 @@ class TripleStore(object):
         #if facts:
             #self.assert_facts(facts, id_attrs=id_attrs)
 
-    # This could get rather interesting...
-    # Only semi-public for the moment
-
-    def entity(self, eid, namespace=None):
-        "Return a read only entity dict representation for a given eid."
-        return Entity(self, eid, namespace=namespace)
-
-
     # Should define triples iterator
     # Define write to file
 
@@ -408,7 +400,7 @@ class TripleStore(object):
         ident_val = some(fact_dict.get(self.ident_attr))
         if id_attrs:
             # This is not particularly efficient; should be using an aev or ave index
-            id_facts = {a: _ids[a].get(fact_dict[a]) or some(self.match_pattern({a: fact_dict[a]}))
+            id_facts = {a: _ids[a].get(fact_dict[a]) or some(self.match({a: fact_dict[a]}))
                         for a in id_attrs if a in fact_dict}
             if ident_val:
                 # make sure no conflicting facts?
@@ -549,14 +541,30 @@ class TripleStore(object):
             lookup_vals = val if isinstance(val, (list, set)) else [val]
             return set(eid for eid, vals in self._aev_index.get([attr]).keys.items() if vals.intersection(lookup_vals))
 
-    # Should probably rename just match, instead of match pattern; then can do match_some for get first?
-    def match_pattern(self, pattern):
-        xf_subpattern = lambda v: (self.match_pattern(v) if isinstance(v, dict) else v)
+    def match(self, pattern):
+        xf_subpattern = lambda v: (self.match(v) if isinstance(v, dict) else v)
         pattern = {k: xf_subpattern(v) for k, v in pattern.items()}
         return reduce(set.intersection, map(self._entity_lookup, pattern.items()))
 
+    # Should probably rename just match, instead of match pattern; then can do match_some for get first?
+    def match_pattern(self, pattern):
+        warnings.warn("Deprecation warnings; call x.match instead")
+        return self.match(pattern)
+
+    # This could get rather interesting...
+    # Only semi-public for the moment
+
+    def entity(self, pattern_or_eid, namespace=None):
+        "Return a read only entity dict representation for a given eid."
+        if isinstance(pattern_or_eid, dict):
+            eid = some(self.match(pattern_or_eid))
+            return self.entity(eid, namespace=namespace)
+        else:
+            return Entity(self, pattern_or_eid, namespace=namespace)
+
+
     def entities(self, pattern, namespace=None):
-        return [self.entity(some(ident), namespace=namespace) for ident in self.match_pattern(pattern)]
+        return [self.entity(some(ident), namespace=namespace) for ident in self.match(pattern)]
 
     def pull(self, pull_expr, entity,
              _seen_entities=None, _base_pattern=None):
@@ -565,7 +573,7 @@ class TripleStore(object):
         as for the specfied entity.
         * entity:
           * can be eid literal, Entity instance, or attribute pattern dictionary
-          * attribute pattern dictionary is interpretted as in self.match_pattern
+          * attribute pattern dictionary is interpretted as in self.match
           * will eventually have warn, fail, etc. options for multiple matches in pattern; presently take-first
 
         * pull-expression:
@@ -584,7 +592,7 @@ class TripleStore(object):
             lookup on the attribute `university:location` of the university entities.
         """
         if isinstance(entity, dict):
-            eids = self.match_pattern(entity)
+            eids = self.match(entity)
             return self.pull(pull_expr, some(eids))
         else:
             eid = entity.eid if isinstance(entity, Entity) else entity
@@ -650,7 +658,7 @@ class TripleStore(object):
         # Could eventually first sort and take by some attribute without having to pull everything, if that
         # became necessary, using a first step to just pull that attribute, without the rest. Then do full
         # pull only for what's needed.
-        eids = self.match_pattern(eids_or_pattern) if isinstance(eids_or_pattern, dict) else eids_or_pattern
+        eids = self.match(eids_or_pattern) if isinstance(eids_or_pattern, dict) else eids_or_pattern
         results = (self.pull(pull_expr, eid) for eid in eids)
         if sort_by:
             results = sorted(results, key = lambda x: x[sort_by])
