@@ -119,9 +119,10 @@ def default_label(x):
         raise(Exception("Not able to label {} object {}".format(type(x), x)))
 
 class NestWrap(object):
-    def __init__(self, scons_wrap, name='base', base_namespace=None, metadata=None, namespace=None, id_attrs=None,
+    def __init__(self, scons_wrap, name='base', base_namespace=None, metadata=None, namespace=None, id_attrs=None, always_build_metadata=True,
             **kw_args):
         self.base_namespace = base_namespace
+        self.always_build_metadata = always_build_metadata
         self.metadata = metadata
         self.id_attrs = id_attrs
         self.scons_wrap = scons_wrap
@@ -398,7 +399,8 @@ class NestWrap(object):
                                ingest_tgts,
                                action=_create_metadata_file,
                                metadata_dict=translated_metadata)
-            env.AlwaysBuild(pre_ingest_tgt)
+            if self.always_build_metadata:
+                env.AlwaysBuild(pre_ingest_tgt)
             # Then we go through and ingest metadata files or other data (fasta, newick, etc)
             pre_agg_file_name = ".preagg." + file_name if current_nest['full_dump'] else file_name
             pre_agg_tgt = env.Command(os.path.join(outdir, pre_agg_file_name),
@@ -410,7 +412,8 @@ class NestWrap(object):
                                name_mappings={str(tripl.some(v)): c_k for c_k, v in c.items()},
                                attr_maps={k: target['attr_map'] for k, target in self.targets.items()})
             env.Depends(pre_agg_tgt, pre_ingest_tgt)
-            env.AlwaysBuild(pre_agg_tgt)
+            if self.always_build_metadata:
+                env.AlwaysBuild(pre_agg_tgt)
             # If we're doing a full dump then we also want to aggregate over all the other data that's been
             # built
             if current_nest['full_dump']:
@@ -421,7 +424,8 @@ class NestWrap(object):
                                    action=_ingest_aggregates,
                                    metadata_dict=translated_metadata)
                 env.Depends(main_tgt, pre_agg_tgt)
-                env.AlwaysBuild(main_tgt)
+                if self.always_build_metadata:
+                    env.AlwaysBuild(main_tgt)
             else:
                 main_tgt = pre_agg_tgt
 
