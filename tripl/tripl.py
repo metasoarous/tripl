@@ -154,11 +154,7 @@ class Entity(object):
         # lazy_ref means that we allow you to infer relationships without assigning a reference type
         if self.namespace and len(key.split(':')) == 1:
             return self.__getitem__(self.namespace + ':' + key)
-        if self._graph._ref_attr(key) or \
-                (self._graph.lazy_refs \
-                 and self._entity.get([key]) \
-                 and all(self._graph._eav_index.contains([v]) for v in self._entity.get([key]))):
-            return [type(self)(self._graph, ident) for ident in self._entity.get([key])]
+        # reverse lookup ref
         if str(key).split(':')[-1][0:1] == '_':
             namespace, name = key.split(':')
             name = name[1:]
@@ -169,13 +165,20 @@ class Entity(object):
                 return list(type(self)(self._graph, e)
                             for e, vs in self._graph._aev_index.get([key]).keys.items()
                             if self.ident in vs)
-                return list(type(self)(self._graph, v)
-                            for v in self._graph._eav_index.keys
-                            if self._graph._eav_index.contains((v, key, self.ident)))
             else:
                 return []
+        # reference
+        if self._graph._ref_attr(key) or \
+                (self._graph.lazy_refs \
+                 and self._entity.get([key]) \
+                 and all(self._graph._eav_index.contains([v]) for v in self._entity.get([key]))):
+            results = [type(self)(self._graph, ident) for ident in self._entity.get([key])]
         else:
-            return self._entity.get([key])
+            results = self._entity.get([key])
+        if self._graph._card_one(key):
+            return some(results)
+        else:
+            return results
 
 
     def get(self, key, default=None):
@@ -684,7 +687,7 @@ class TripleStore(object):
                     pull_data[attr] = results
             for a, vs in pull_data.items():
                 pull_data[a] = some(vs) if self._card_one(a) else vs
-            return pull_data
+            return {k: some(v) if self._card_one(k) else v for k, v in pull_data.items()}
             # ctn...
 
     def pull_many(self, pull_expr, eids_or_pattern, sort_by=None, sort_desc=True):
