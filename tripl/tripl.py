@@ -1,8 +1,8 @@
 """
-Tripl - a python library for working with Trip semantic graph data inspired by Datomic, DataScript, and their
+Tripl - a python library for working with Tripl semantic graph data inspired by Datomic, DataScript, and their
 roots in the Semantic Web.
 
-Trip is our working name for a simple data format, inspired by Datomic and DataScript's transaction forms, the
+Tripl is our working name for a simple data format, inspired by Datomic and DataScript's transaction forms, the
 EAV index model, the Alternative RDF-JSON specification, and more broadly, a generalized and simplified
 interpretation of RDF. The README has more context on how all of these things fit together philosophically.
 
@@ -444,13 +444,13 @@ class TripleStore(object):
             if ident_val:
                 # make sure no conflicting facts?
                 if any(id_facts.values()):
-                    print("Warning! Conflicting values in _resolve_eid!")
+                    warnings.warn("Warning! Conflicting values in _resolve_eid!")
                 eid = ident_val
             else:
                 eids = set(v for v in id_facts.values() if v)
                 if eids:
                     if len(eids) > 1:
-                        print("Warning! Conflicting values in _resolve_eid (2)!")
+                        warnings.warn("Warning! Conflicting values in _resolve_eid (2)!")
                     eid = some(eids)
                 else:
                     eid = uuid.uuid1()
