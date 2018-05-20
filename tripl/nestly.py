@@ -81,7 +81,7 @@ def _ingest_metadata_files(source, target, env):
         doc = doc[0]
     for ingest_doc in ingest_docs:
         doc.update(ingest_doc)
-    doc['tripl:aggregate'] = doc.get('tripl:aggregate', [])
+    doc['tripl.nestly:aggregate'] = doc.get('tripl.nestly:aggregate', [])
     for other_file in (str(src) for src in source if str(src).split('.')[-1] != 'json'):
         v = {'db:ident': env['file_idents'][other_file],
              'tripl.file:contents': file(other_file).read()}
@@ -96,7 +96,7 @@ def _ingest_metadata_files(source, target, env):
             v.update({'tripl.csv:data': list(bio.load_csv(other_file, attr_map))})
         #if fmt in {'newick', 'nw', 'nwk'}:
             #v.update(ingest_newick(other_file))
-        doc['tripl:aggregate'].append(v)
+        doc['tripl.nestly:aggregate'].append(v)
     with open(target, 'w') as fp:
         json.dump([doc], fp, indent=4, default=json_encoder_default())
 
@@ -107,8 +107,8 @@ def _ingest_aggregates(source, target, env):
     doc = env['metadata_dict']
     if isinstance(doc, list):
         doc = doc[0]
-    doc['tripl:aggregate'] = doc.get('tripl:aggregate', [])
-    doc['tripl:aggregate'] += ingest_docs
+    doc['tripl.nestly:aggregate'] = doc.get('tripl.nestly:aggregate', [])
+    doc['tripl.nestly:aggregate'] += ingest_docs
     with open(target, 'w') as fp:
         json.dump([doc], fp, indent=4, default=json_encoder_default())
 
