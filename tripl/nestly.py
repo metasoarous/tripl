@@ -29,10 +29,18 @@ def json_encoder_default(path_depth=0):
     return _json_encoder_default
 
 
+def failable_json_file(source):
+    filename = str(source)
+    try:
+        return json.load(file(filename))
+    except Exception as e:
+        return {'tripl.nestly:error': str(e),
+                'tripl.nestly:file': filename}
+
 def _create_metadata_file(source, target, env):
     target = str(target[0])
     #pp.pprint(env['metadata_dict'])
-    json_sources = [json.load(file(str(f))) for f in source if str(f).split('.')[-1] == 'json']
+    json_sources = [failable_json_file(f) for f in source if str(f).split('.')[-1] == 'json']
     doc = env['metadata_dict']
     for json_source in json_sources:
         doc.update(json_source)
