@@ -627,13 +627,26 @@ class TripleStore(object):
           * `_` after the `:` separator of the namespaced `university:_location` attribute specifies a reverse
             lookup on the attribute `university:location` of the university entities.
         """
+        # XXX Note: note currently processing _seen_entities correctly here for termination of recursion
+        # points in pull expressions
+        # set base pattern if necessary
+        _base_pattern = _base_pattern or pull_expr
+        _seen_entities = _seen_entities or set()
+        _base_pattern = _base_pattern or pull_expr
         if isinstance(entity, dict):
             eids = self.match(entity)
-            return self.pull(pull_expr, some(eids))
+            # This should only be getting called on top level entity in the tree, so don't really need
+            # _base_pattern or even _seen_entities in theory
+            return self.pull(pull_expr, some(eids), _seen_entities=_seen_entities)
         else:
             eid = entity.eid if isinstance(entity, Entity) else entity
+            if eid in _seen_entities:
+                # short circuit and just return the eid
+                # this should really not be a set once we get schema properly returning just the one ident
+                return {'db:ident': set(eid)}
+            # otherwise add this eid to the list of now seen eids
+            _seen_entities.add(eid)
             _entity = self._eav_index.get([eid])
-            _seen_entities = _seen_entities or {eid} # seed the seen entities if needed
             dict_patterns = filter(lambda x: isinstance(x, dict), pull_expr)
             attr_patterns = filter(lambda x: not(isinstance(x, dict)), pull_expr)
             # Get the attr_patterns (non recursive patterns), separate reverse lookups, etc
@@ -665,12 +678,11 @@ class TripleStore(object):
                             eids = set(e for e, attrs in self._eav_index.keys.items()
                                          if eid in attrs.get([reverse]))
                         else:
-                            print("Warning! Should have either lazy refs or or a schema for reverse lookups!")
-                    else:    
-                        eids = _entity[attr]
+                            warnings.warn("Warning! Should have either lazy refs or or a schema for reverse lookups!")
+                    else:
+                        eids = _entity.get([attr]) or []
                     if token == '...':
                         # Only track recursion points in seen entities; all else statically terminates
-                        _seen_entities = _seen_entities.update(_entity[attr])
                         token = _base_pattern
 
                     # * identity attr should key cardinality as well for reverse lookups; could have ref ident
@@ -694,8 +706,9 @@ class TripleStore(object):
         # Could eventually first sort and take by some attribute without having to pull everything, if that
         # became necessary, using a first step to just pull that attribute, without the rest. Then do full
         # pull only for what's needed.
+        _seen_entities = set()
         eids = self.match(eids_or_pattern) if isinstance(eids_or_pattern, dict) else eids_or_pattern
-        results = (self.pull(pull_expr, eid) for eid in eids)
+        results = (self.pull(pull_expr, eid, _seen_entities=_seen_entities) for eid in eids)
         if sort_by:
             results = sorted(results, key = lambda x: x[sort_by])
         if not sort_desc:
