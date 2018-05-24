@@ -197,14 +197,19 @@ class Entity(object):
         elif len(keys) == 1:
             return self.get(keys[0])
         else:
-            vals = self.get(keys[0])
-            if vals:
+            # have to make sure that for cardinality one we don't accidentally iterate over k/v pairs of a
+            # dict as though they are each entity dicts
+            key_result = self.get(keys[0])
+            sub_results = lambda x: x.get_in(keys[1:]) or []
+            if isinstance(key_result, list):
                 result = list(subval
-                              for val in vals
-                              for subval in (val.get_in(keys[1:]) or []))
-                return result or default
+                              for x in key_result
+                              for subval in sub_results(x))
+            elif key_result:
+                result = sub_results(key_result)
             else:
-                return default
+                result = []
+            return result or default
 
     def some(self, key, default=None):
         """Like get, but returns a single value, instead of a list of values. Best used if you are expecting
