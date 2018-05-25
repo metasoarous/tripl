@@ -5,6 +5,7 @@ import copy
 import uuid
 import tripl
 import pprint as pp
+import warnings
 pp #lint
 
 import SCons.Node
@@ -74,7 +75,7 @@ def ingest_newick(filename):
 def _ingest_metadata_files(source, target, env):
     target = str(target[0])
     # First we take care of the 
-    ingest_docs = (json.load(file(str(src))) for src in source if str(src).split('.')[-1] == 'json')
+    ingest_docs = (failable_json_file(src) for src in source if str(src).split('.')[-1] == 'json')
     ingest_docs = [(doc[0] if isinstance(doc, list) else doc) for doc in ingest_docs]
     doc = env['metadata_dict']
     if isinstance(doc, list):
@@ -83,26 +84,32 @@ def _ingest_metadata_files(source, target, env):
         doc.update(ingest_doc)
     doc['tripl.nestly:aggregate'] = doc.get('tripl.nestly:aggregate', [])
     for other_file in (str(src) for src in source if str(src).split('.')[-1] != 'json'):
-        v = {'db:ident': env['file_idents'][other_file],
-             'tripl.file:contents': file(other_file).read()}
-        fmt = other_file.split('.')[-1]
-        if fmt in {'fasta', 'fa'}:
-            v.update(ingest_seqs(other_file))
-        if fmt in {'csv'}:
-            # ugg... to get the right attr_map from attr_maps, we need to be able to map the filepaths to tgt
-            # names
-            name_mappings = env.get('name_mappings', {})
-            attr_map = env.get('attr_maps', {}).get(name_mappings.get(other_file), {})
-            v.update({'tripl.csv:data': list(bio.load_csv(other_file, attr_map))})
-        #if fmt in {'newick', 'nw', 'nwk'}:
-            #v.update(ingest_newick(other_file))
+        v = {'db:ident': env['file_idents'][other_file]}
+        try:
+            v['tripl.file:contents'] = file(other_file).read()
+            fmt = other_file.split('.')[-1]
+            if fmt in {'fasta', 'fa'}:
+                v.update(ingest_seqs(other_file))
+            if fmt in {'csv'}:
+                # ugg... to get the right attr_map from attr_maps, we need to be able to map the filepaths to tgt
+                # names
+                name_mappings = env.get('name_mappings', {})
+                attr_map = env.get('attr_maps', {}).get(name_mappings.get(other_file), {})
+                v.update({'tripl.csv:data': list(bio.load_csv(other_file, attr_map))})
+            #if fmt in {'newick', 'nw', 'nwk'}:
+                #v.update(ingest_newick(other_file))
+        except Exception as e:
+            warnings.warn("Can't process file: " + str(other_file))
+            warnings.warn("Exception: " + str(e))
+            v['tripl.file:error'] = str(e)
         doc['tripl.nestly:aggregate'].append(v)
     with open(target, 'w') as fp:
         json.dump([doc], fp, indent=4, default=json_encoder_default())
 
+
 def _ingest_aggregates(source, target, env):
     target = str(target[0])
-    ingest_docs = (json.load(file(str(src))) for src in source)
+    ingest_docs = (failable_json_file(src) for src in source)
     ingest_docs = [(doc[0] if isinstance(doc, list) else doc) for doc in ingest_docs]
     doc = env['metadata_dict']
     if isinstance(doc, list):
