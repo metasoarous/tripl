@@ -662,7 +662,7 @@ class TripleStore(object):
             # Handling reverse lookups at base attr_patterns (not in the dict_patterns)
             if reverse_lookups:
                 for lookup in reverse_lookups:
-                    pull_data[reverse_lookup] = self.pull([{lookup: [self.ident_attr]}], eid)[reverse_lookup]
+                    pull_data[lookup] = self.pull([{lookup: [self.ident_attr]}], eid)[lookup]
             # Handle * attrs
             if '*' in attr_patterns:
                 for a, vs in _entity.keys.items():
@@ -680,8 +680,8 @@ class TripleStore(object):
                             eids = self._vae_index.get([eid, reverse])
                         elif self.lazy_refs:
                             # have to search through all triples
-                            eids = set(e for e, attrs in self._eav_index.keys.items()
-                                         if eid in attrs.get([reverse]))
+                            reversed_lookup = self._aev_index.get([reverse])
+                            eids = set((e for e, vs in reversed_lookup.keys.items() if eid in vs) if reversed_lookup else [])
                         else:
                             warnings.warn("Warning! Should have either lazy refs or or a schema for reverse lookups!")
                     else:
