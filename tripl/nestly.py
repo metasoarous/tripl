@@ -6,6 +6,7 @@ import uuid
 import tripl
 import pprint as pp
 import warnings
+import yaml
 pp #lint
 
 import SCons.Node
@@ -34,6 +35,14 @@ def failable_json_file(source):
     filename = str(source)
     try:
         return json.load(file(filename))
+    except Exception as e:
+        return {'tripl.nestly:error': str(e),
+                'tripl.nestly:file': filename}
+
+def failable_yaml_file(source):
+    filename = str(source)
+    try:
+        return yaml.load(file(filename))
     except Exception as e:
         return {'tripl.nestly:error': str(e),
                 'tripl.nestly:file': filename}
@@ -74,8 +83,9 @@ def ingest_newick(filename):
 
 def _ingest_metadata_files(source, target, env):
     target = str(target[0])
-    # First we take care of the 
-    ingest_docs = (failable_json_file(src) for src in source if str(src).split('.')[-1] == 'json')
+    # First we take care of any yaml or json files, which we by default assume to be triplable metadata
+    ingest_docs = [failable_json_file(src) for src in source if str(src).split('.')[-1] == 'json']
+    ingest_docs += [failable_yaml_file(src) for src in source if str(src).split('.')[-1] == 'yaml']
     ingest_docs = [(doc[0] if isinstance(doc, list) else doc) for doc in ingest_docs]
     doc = env['metadata_dict']
     if isinstance(doc, list):
@@ -83,7 +93,7 @@ def _ingest_metadata_files(source, target, env):
     for ingest_doc in ingest_docs:
         doc.update(ingest_doc)
     doc['tripl.nestly:aggregate'] = doc.get('tripl.nestly:aggregate', [])
-    for other_file in (str(src) for src in source if str(src).split('.')[-1] != 'json'):
+    for other_file in (str(src) for src in source if str(src).split('.')[-1] not in ['json', 'yaml']):
         v = {'db:ident': env['file_idents'][other_file]}
         try:
             v['tripl.file:contents'] = file(other_file).read()
