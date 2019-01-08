@@ -700,7 +700,7 @@ class TripleStore(object):
                                          # that... Have to think about these side cases... update
                                          # compute global state?
                                          _seen_entities=_seen_entities)
-                               for e in eids]
+                               for e in (eids or [])]
                     pull_data[attr] = results
             for a, vs in pull_data.items():
                 pull_data[a] = some(vs) if self._card_one(a) else vs
