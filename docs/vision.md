@@ -74,6 +74,6 @@ Any useful language should be able to read and use this data without a ton of di
 The core Tripl library clocked in at right around 120 lines of code with basic file read/write, pull query, and entity pattern matching evaluation.
 With all of the schema, indexing of VAE triples for faster reverse lookup queries and such, this looks to go a few hundred lines, but is still a fairly simple/small thing.
 But also, if you are on a platform or circumstance where Datomic, DataScript or Mentat are available, the format being used here can very naturally target any of these databases.
-There's now also an effort to bring this storage and query pattern to the JVM and JS via the [Datahike](https://github.com/replicativ/datahike) project.
+There's now also an effort to bring this storage and query pattern to the JVM and JS via the [Datahike](https://github.com/replikativ/datahike) project.
 
 
