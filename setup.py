@@ -25,6 +25,6 @@ setup(name='tripl',
               'tripl = tripl.cli:main',
           ]
       },
-      #test_suite='tripl.test.suite',
-      #tests_require=['mock>=1.0.1']
+      setup_requires=["pytest-runner"],
+      tests_require=["pytest", "hypothesis"],
       )
