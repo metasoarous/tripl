@@ -76,7 +76,7 @@ class TupleIndex(object):
                 for v in vs:
                     yield k, v
             else:
-                for tupl in v:
+                for tupl in vs:
                     yield (k,) + tupl
 
     def get(self, tupl, default=None):
