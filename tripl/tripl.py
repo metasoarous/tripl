@@ -671,6 +671,7 @@ class TripleStore(object):
             for dict_pattern in dict_patterns:
                 for attr, token in dict_pattern.items():
                     reverse = reverse_lookup(attr)
+                    eids = None
                     if reverse:
                         # Then reverse lookup
                         if self._ref_attr(reverse):
