@@ -376,8 +376,7 @@ class NestWrap(object):
                or (nest_level['label_func'](d or nest_val) if nest_level.get('label_func') else nest_val)
 
         # This is where we construct the actual dictionary we're returning.
-        d = {}
-        d[nest_id] = v_id
+        d = {nest_id: v_id}
         if isinstance(nest_val, dict):
             d.update({self._namespaced(a, base_nest_level): v for a, v in nest_val.items()})
         d.update(self._namespaced(metadata, base_nest_level=base_nest_level))
