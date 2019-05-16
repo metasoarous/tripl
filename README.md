@@ -244,7 +244,7 @@ e = ts.entity({'cft.timepoint:id': 'seed-sample'})
 
 # These behave as dict like views over the EAV index, that update as the store updates.
 
-print e['cft.timepoint:id']
+print(e['cft.timepoint:id'])
 pprint.pprint(e['cft.seq:_timepoint'])
 
 ```
