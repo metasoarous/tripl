@@ -1,4 +1,3 @@
-
 import os
 import json
 import copy
@@ -28,6 +27,7 @@ def json_encoder_default(path_depth=0):
         else:
             # warn?
             return str(obj)
+
     return _json_encoder_default
 
 
@@ -39,6 +39,7 @@ def failable_json_file(source):
         return {'tripl.nestly:error': str(e),
                 'tripl.nestly:file': filename}
 
+
 def failable_yaml_file(source):
     filename = str(source)
     try:
@@ -47,9 +48,10 @@ def failable_yaml_file(source):
         return {'tripl.nestly:error': str(e),
                 'tripl.nestly:file': filename}
 
+
 def _create_metadata_file(source, target, env):
     target = str(target[0])
-    #pp.pprint(env['metadata_dict'])
+    # pp.pprint(env['metadata_dict'])
     json_sources = [failable_json_file(f) for f in source if str(f).split('.')[-1] == 'json']
     doc = env['metadata_dict']
     for json_source in json_sources:
@@ -57,7 +59,7 @@ def _create_metadata_file(source, target, env):
     # TODO; handle other ingested files, maybe just reading in file contents for now, eventually fully tupling
     # them
     with open(target, 'w') as fp:
-        json.dump([doc], fp, indent=4, default=json_encoder_default()) #, cls=env['encoder_cls'])
+        json.dump([doc], fp, indent=4, default=json_encoder_default())  # , cls=env['encoder_cls'])
 
 
 def ingest_seqs(filename):
@@ -67,14 +69,17 @@ def ingest_seqs(filename):
 
 def ingest_newick(filename):
     trees = list(Phylo.parse(filename, 'newick'))
+
     def ingest_clade(clade):
         d = clade.__dict__
         children = d.pop('clades')
         return tripl.namespaced('bio.phylo.clade',
-                clades=map(ingest_clade, children),
-                **{k: v for k, v in d.items() if v})
+                                clades=map(ingest_clade, children),
+                                **{k: v for k, v in d.items() if v})
+
     def ingest_tree(tree):
         return {'bio.phylo.tree:root': ingest_clade(tree.root)}
+
     if len(trees) > 1:
         return {'bio.phylo.tree:set': map(ingest_tree, trees)}
     else:
@@ -106,8 +111,8 @@ def _ingest_metadata_files(source, target, env):
                 name_mappings = env.get('name_mappings', {})
                 attr_map = env.get('attr_maps', {}).get(name_mappings.get(other_file), {})
                 v.update({'tripl.csv:data': list(bio.load_csv(other_file, attr_map))})
-            #if fmt in {'newick', 'nw', 'nwk'}:
-                #v.update(ingest_newick(other_file))
+            # if fmt in {'newick', 'nw', 'nwk'}:
+            #     v.update(ingest_newick(other_file))
         except Exception as e:
             warnings.warn("Can't process file: " + str(other_file))
             warnings.warn("Exception: " + str(e))
@@ -133,6 +138,7 @@ def _ingest_aggregates(source, target, env):
 def _has_namespace(name):
     return len(name.split(':')) > 1
 
+
 def default_label(x):
     if isinstance(x, str):
         return x
@@ -141,18 +147,20 @@ def default_label(x):
     if isinstance(x, int) or isinstance(x, float):
         return str(x)
     else:
-        raise(Exception("Not able to label {} object {}".format(type(x), x)))
+        raise (Exception("Not able to label {} object {}".format(type(x), x)))
+
 
 class NestWrap(object):
-    def __init__(self, scons_wrap, name='base', base_namespace=None, metadata=None, namespace=None, id_attrs=None, always_build_metadata=True,
-            **kw_args):
+    def __init__(self, scons_wrap, name='base', base_namespace=None, metadata=None, namespace=None, id_attrs=None,
+                 always_build_metadata=True,
+                 **kw_args):
         self.base_namespace = base_namespace
         self.always_build_metadata = always_build_metadata
         self.metadata = metadata
         self.id_attrs = id_attrs
         self.scons_wrap = scons_wrap
 
-        #self.tripl_store = tripl.TripleStroe
+        # self.tripl_store = tripl.TripleStroe
         namespace = namespace or name
         namespace = (self.base_namespace + "." if self.base_namespace else "") + namespace
         self.current_nest = name
@@ -166,14 +174,14 @@ class NestWrap(object):
             'aggregate_attrs': [],
             'child_nests': [],
             'targets': set()
-            }}
+        }}
         self.targets = {}
 
         self.file_idents = {}
 
-        #@self.add_target()
-        #def _base_aggregate(outdir, c):
-            #return []
+        # @self.add_target()
+        # def _base_aggregate(outdir, c):
+        #     return []
 
         @self.add_target(name=namespace + '.db:ident')
         def _ident_fn(outdir, c):
@@ -185,9 +193,11 @@ class NestWrap(object):
 
     def add_nest(self, name=None, **kw):
         """A simple decorator which wraps :meth:`nestly.core.Nest.add`."""
+
         def deco(func):
             self.add(name or func.__name__, func, **kw)
             return func
+
         return deco
 
     def add_metadata(self, name=None, metadata=None):
@@ -195,7 +205,6 @@ class NestWrap(object):
         during build setup)."""
         # QUESTION: How to do this? # We'll defer for now and say done, but need to think through details here
         return self.add_target(name=name, metadata=lambda c, x: {'tripl:type': 'tripl.nestly:deferred_metadata'})
-
 
     # This is the real meat of things as an interface:
     # ================================================
@@ -220,7 +229,8 @@ class NestWrap(object):
             'id_attrs': (id_attrs or []) + self.nest_levels[self.current_nest]['id_attrs'],
             'ident_attr': namespace + '.db:ident',
             'aggregate_attr': aggregate_attr,
-            'aggregate_attrs': parent_level['aggregate_attrs'] + [aggregate_attr] if full_dump else parent_level['aggregate_attrs'],
+            'aggregate_attrs': parent_level['aggregate_attrs'] + [aggregate_attr] if full_dump else parent_level[
+                'aggregate_attrs'],
             'parent_nest': self.current_nest,
             'child_nests': [],
             'full_dump': full_dump,
@@ -231,6 +241,7 @@ class NestWrap(object):
         self.current_nest = name
 
         return_val = self.scons_wrap.add(name, nestable, label_func=label_func, **kw_args)
+
         @self.add_target(name=nest_level['ident_attr'])
         def _ident_fn(outdir, c):
             parent_ident = c.get(parent_level.get('ident_attr'))
@@ -251,7 +262,6 @@ class NestWrap(object):
             def outdir_fn(outdir, c):
                 return outdir
 
-
         return return_val
 
     # add namespace arg here?
@@ -260,16 +270,17 @@ class NestWrap(object):
             real_name = f.__name__ or name
             real_name = name or f.__name__
             self.targets[real_name] = {
-                    'name': real_name,
-                    'doc': f.__doc__,
-                    'metadata': metadata,
-                    'nest': self.current_nest,
-                    'attr_map': attr_map,
-                    'ingest': ingest,
-                    'omit_metadata': omit_metadata or real_name[0:1] == '_'}
+                'name': real_name,
+                'doc': f.__doc__,
+                'metadata': metadata,
+                'nest': self.current_nest,
+                'attr_map': attr_map,
+                'ingest': ingest,
+                'omit_metadata': omit_metadata or real_name[0:1] == '_'}
             self.nest_levels[self.current_nest]['targets'].add(real_name)
             f_ = self.scons_wrap.add_target(real_name)(f)
             return f_
+
         return deco
 
     def _pop(self, env=None, file_name='metadata.json', full_dump=False):
@@ -277,11 +288,10 @@ class NestWrap(object):
         self.scons_wrap.pop()
         self.current_nest = self.nest_levels[self.current_nest]['parent_nest']
 
-
     def pop(self, name=None, env=None, file_name='metadata.json', full_dump=False):
-            while name and name != self.current_nest:
-                self._pop(env=env, file_name=file_name)
-            self._pop(env=env, file_name=file_name, full_dump=full_dump)
+        while name and name != self.current_nest:
+            self._pop(env=env, file_name=file_name)
+        self._pop(env=env, file_name=file_name, full_dump=full_dump)
 
     # Some implementation details...
 
@@ -296,28 +306,29 @@ class NestWrap(object):
             # We use current nest, because we name to the 
             return self.nest_levels[self.current_nest]['namespace']
 
-
     def _namespaced(self, thing, base_nest_level=None):
         if isinstance(thing, dict):
-            return {self._namespaced(a, base_nest_level=base_nest_level):
+            return {
+                self._namespaced(a, base_nest_level=base_nest_level):
                     (self._namespaced(v, base_nest_level=base_nest_level) if isinstance(v, dict) else v)
-                    for a, v in thing.items()}
+                for a, v in thing.items()}
         elif isinstance(thing, str):
             if _has_namespace(thing):
                 return thing
             namespace = self.base_namespace + '.' + base_nest_level if base_nest_level else self._namespace(thing)
             return namespace + ':' + thing
 
-
     def _translate_target(self, c, a, v):
         # Set some things up
         target = self.targets[a]
+
         def relative_path(p):
             p = str(p)
             if p[0:1] != '/':
                 return os.path.relpath(p, c['_output_wrt'])
             else:
                 return p
+
         # recurse for list like things
         if isinstance(v, list) or isinstance(v, SCons.Node.NodeList):
             return [self._translate_target(c, a, v_) for v_ in v]
@@ -342,9 +353,8 @@ class NestWrap(object):
         # TODO namespace all keywords
         return v
 
-
     def _translated_metadata_dict(self, c, base_nest_level=None, full_dump=False):
-        #orig_base_nest_level = base_nest_level
+        # orig_base_nest_level = base_nest_level
         base_nest_level = base_nest_level or self.current_nest
         nest_level = self.nest_levels[base_nest_level]
         nest_id = nest_level['namespace'] + ':id'
@@ -355,7 +365,6 @@ class NestWrap(object):
         # Here's the other place where we call the metadata function if applicable
         metadata = nest_metadata(c, nest_val) if callable(nest_metadata) else (nest_metadata or {})
 
-
         # This is kind of stupid and should be changed... we end up recreating the metadata twice, once so that we
         # can call the label func, and then the next so that we can actually construct what we end up returning.
         # Not sure why, but if we don't do it this way, we end up getting a stackoverlow recursion. Still haven't
@@ -364,7 +373,7 @@ class NestWrap(object):
         if isinstance(metadata, dict):
             d.update(self._namespaced(metadata, base_nest_level=base_nest_level))
         v_id = d.get(nest_id) \
-                or (nest_level['label_func'](d or nest_val) if nest_level.get('label_func') else nest_val)
+               or (nest_level['label_func'](d or nest_val) if nest_level.get('label_func') else nest_val)
 
         # This is where we construct the actual dictionary we're returning.
         d = {}
@@ -373,7 +382,7 @@ class NestWrap(object):
             d.update({self._namespaced(a, base_nest_level): v for a, v in nest_val.items()})
         d.update(self._namespaced(metadata, base_nest_level=base_nest_level))
 
-        #for a, v in c.items():
+        # for a, v in c.items():
         # there may be a bug here:
         for a in nest_level['targets']:
             # Don't want to transact "hidden" targets
@@ -391,7 +400,9 @@ class NestWrap(object):
                 parent_nest = self.nest_levels[parent_nest_level]
                 parent_ident_name = parent_nest['ident_attr']
                 if nest_level['full_dump']:
-                    d[self._namespaced(parent_nest_level)] = self._translated_metadata_dict(c, base_nest_level=parent_nest_level)
+                    d[self._namespaced(parent_nest_level)] = \
+                        self._translated_metadata_dict(c,
+                                                       base_nest_level=parent_nest_level)
                 else:
                     d[self._namespaced(parent_nest_level)] = {'db:ident': c[parent_ident_name]}
                 if parent_nest['parent_nest']:
@@ -401,53 +412,53 @@ class NestWrap(object):
         # Should also be serializing a secondary representation of the 
         return d
 
-
     # All to accomodate this; the export of the control dictionary as a tripl json file
 
     def dump_metadata(self, env=None, target_name='_metadata', file_name='metadata.json', full_dump=True):
         env = env or self.scons_wrap.alias_environment
         current_nest = self.nest_levels[self.current_nest]
         parent_nest = self.nest_levels[current_nest['parent_nest']]
-        # Using `_` by default because 
+
+        # Using `_` by default because
         @self.add_target(name=target_name)
         def _metadata(outdir, c):
             translated_metadata = self._translated_metadata_dict(c, full_dump=full_dump)
-            #for attr in parent_nest['aggregate_attrs']:
-                #print "Finding attr in parent nest from main loop", attr
-                #c[attr].append(translated_metadata)
+            # for attr in parent_nest['aggregate_attrs']:
+            #     print "Finding attr in parent nest from main loop", attr
+            #     c[attr].append(translated_metadata)
             ingest_attrs = [attr for attr in current_nest['targets'] if self.targets[attr]['ingest']]
             ingest_tgts = [c[attr] for attr in ingest_attrs]
             # First we go through and write out the preingested json (do we really need this?)
             pre_ingest_file_name = ".preingest." + file_name
             pre_ingest_tgt = env.Command(os.path.join(outdir, pre_ingest_file_name),
-                               # Should actually make this depend on all the other files? as a flag?
-                               ingest_tgts,
-                               action=_create_metadata_file,
-                               metadata_dict=translated_metadata)
+                                         # Should actually make this depend on all the other files? as a flag?
+                                         ingest_tgts,
+                                         action=_create_metadata_file,
+                                         metadata_dict=translated_metadata)
             if self.always_build_metadata:
                 env.AlwaysBuild(pre_ingest_tgt)
             # Then we go through and ingest metadata files or other data (fasta, newick, etc)
             pre_agg_file_name = ".preagg." + file_name if current_nest['full_dump'] else file_name
             pre_agg_tgt = env.Command(os.path.join(outdir, pre_agg_file_name),
-                               # Should actually make this depend on all the other files? as a flag?
-                               [pre_ingest_tgt] + ingest_tgts,
-                               action=_ingest_metadata_files,
-                               metadata_dict=translated_metadata,
-                               file_idents=self.file_idents,
-                               name_mappings={str(tripl.some(v)): c_k for c_k, v in c.items()},
-                               attr_maps={k: target['attr_map'] for k, target in self.targets.items()})
+                                      # Should actually make this depend on all the other files? as a flag?
+                                      [pre_ingest_tgt] + ingest_tgts,
+                                      action=_ingest_metadata_files,
+                                      metadata_dict=translated_metadata,
+                                      file_idents=self.file_idents,
+                                      name_mappings={str(tripl.some(v)): c_k for c_k, v in c.items()},
+                                      attr_maps={k: target['attr_map'] for k, target in self.targets.items()})
             env.Depends(pre_agg_tgt, pre_ingest_tgt)
             if self.always_build_metadata:
                 env.AlwaysBuild(pre_agg_tgt)
             # If we're doing a full dump then we also want to aggregate over all the other data that's been
             # built
             if current_nest['full_dump']:
-                #env.Depends(main_tgt, c[current_nest['aggregate_attr']])
+                # env.Depends(main_tgt, c[current_nest['aggregate_attr']])
                 main_tgt = env.Command(os.path.join(outdir, file_name),
-                                   # Should actually make this depend on all the other files? as a flag?
-                                   c[current_nest['aggregate_attr']],
-                                   action=_ingest_aggregates,
-                                   metadata_dict=translated_metadata)
+                                       # Should actually make this depend on all the other files? as a flag?
+                                       c[current_nest['aggregate_attr']],
+                                       action=_ingest_aggregates,
+                                       metadata_dict=translated_metadata)
                 env.Depends(main_tgt, pre_agg_tgt)
                 if self.always_build_metadata:
                     env.AlwaysBuild(main_tgt)
@@ -460,10 +471,8 @@ class NestWrap(object):
             return main_tgt
 
     # Eventually; need to reconcile with nesting as implicit aggregation for some cases
-    #def add_aggregate(self, name, data_fac):
-        #return self.scons_wrap.add_aggregate(name, data_fac)
+    # def add_aggregate(self, name, data_fac):
+    #     return self.scons_wrap.add_aggregate(name, data_fac)
     # For backwards compatibilty; eventually
-    #def add_controls(self, name, data_fac):
-        #return self.scons_wrap.add_controls(name, data_fac)
-
-
+    # def add_controls(self, name, data_fac):
+    #     return self.scons_wrap.add_controls(name, data_fac)

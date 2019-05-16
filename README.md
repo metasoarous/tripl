@@ -111,7 +111,7 @@ import uuid
 subject_255 = uuid.uuid1()
 
 data = [{'db:ident': subject_255, 'cft.subject:id': 'QA255', 'cft:type': 'cft.type:subject'},
-        #...
+        # ...
         {'cft.seq:id': 'QA255-092.Vh',
          'cft:type': 'cft.type:seq',
          'cft:description': 'seed sequence for patient QA255',
@@ -121,7 +121,7 @@ data = [{'db:ident': subject_255, 'cft.subject:id': 'QA255', 'cft:type': 'cft.ty
          'cft.seq:timepoint': [
              {'cft.timepoint:id': 'seed-sample', 'cft:type': 'cft.type:timepoint'},
              {'cf:.timepoint:id': 'dpi1204', 'cft:type': 'cft.type:timepoint'}]},
-        #...
+        # ...
         ]
 ```
 
@@ -155,7 +155,7 @@ For one thing, we may wish to specify that the default cardinality should be `db
 
 ```python
 schema = [
-    {'db:ident': 'cft.seq:timepoint', 'db:cardinality' 'db.cardinality:one'}]
+    {'db:ident': 'cft.seq:timepoint', 'db:cardinality': 'db.cardinality:one'}]
 ```
 
 So we have the ability to 
@@ -182,7 +182,7 @@ schema = {
    'cft.seq:subject': {'db:valueType': 'db.type:ref'}}
 
 
-## Let's imagine the following data having been transacted in here
+# Let's imagine the following data having been transacted in here
 
 ts = tripl.TripleStore(schema=schema, default_cardinality='db.cardinality:one')
 
