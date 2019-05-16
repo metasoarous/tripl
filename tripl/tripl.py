@@ -33,7 +33,7 @@ def log(name, value):
 
 def some(xs, default=None):
     """return some thing from the set, or None if nothing"""
-    if isinstance(xs, (str, unicode, int, float, bool, dict, Entity, uuid.UUID)):
+    if isinstance(xs, (str, int, float, bool, dict, Entity, uuid.UUID)):
         return xs
     else:
         try:
