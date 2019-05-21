@@ -2,11 +2,11 @@ import csv
 
 
 def _traverse(obj, callback=None):
-    '''Navigate to all nodes in a nested hash map.
+    """Navigate to all nodes in a nested hash map.
     Function to traverse a nested hash map that conforms to what JSON allows:
     maps and lists. Note that this function only navigates the data structure
     (obj). Modification is provided through the callback.
-    '''
+    """
     if isinstance(obj, dict):
         value = {k: _traverse(v, callback) for k, v in obj.items()}
     elif isinstance(obj, list):
@@ -21,7 +21,7 @@ def _traverse(obj, callback=None):
 
 
 def _traverse_modify(data, obj, ns=None):  # ns .. namespace, data as dict
-    '''Traverse nested hash map and replace keys.
+    """Traverse nested hash map and replace keys.
     Function that traverses and modifies a nested hash map (JSON format).
     Basically it substitutes keys using a map provided by the user. This map serves
     to map e.g. column headers of a table (CSV format) into tripl semantics
@@ -52,22 +52,23 @@ def _traverse_modify(data, obj, ns=None):  # ns .. namespace, data as dict
         ]}
 
     _traverse_modify(data, attr_map, ns='toy')
-    '''
+    """
+
     def transformer(value):
 
         if isinstance(value, list):
             return value
 
         if isinstance(value, dict):
-            #entity = set()
+            # entity = set()
             vc = {}
             # copy because iterate + mutate = bad idea, stackoverflow, 3346696
             for a, a_ in obj.items():
                 a = ns + ':' + a if ns and len(a.split(':')) > 1 else a
                 vc[a] = value.get(a)
 
-            #assert len(entity) == 1, \
-                #'The keys in the attribute map (obj) suggest heterogenous types.'
+            # assert len(entity) == 1, \
+            # 'The keys in the attribute map (obj) suggest heterogenous types.'
 
             if ns:
                 vc.update({'tripl:type': ns})
@@ -79,7 +80,7 @@ def _traverse_modify(data, obj, ns=None):  # ns .. namespace, data as dict
 
 
 def load_csv(fp, attr_map, ns=None):
-    '''Turn CSV cells into triples.
+    """Turn CSV cells into triples.
     A helper function to turn data in CSV format into entity-attribute-value
     triples. The main ingredient that the user provides is an attribute map.
     This map serves to map e.g. column headers of a table (CSV format) into
@@ -130,7 +131,7 @@ def load_csv(fp, attr_map, ns=None):
     # query
     pull_expr = ['db:ident', 'toy.seq:id']
     list(ts.pull_many(pull_expr, {'toy:type': 'toy.type:seq'}))
-    '''
+    """
     with open(fp) as file:
         reader = csv.DictReader(file)
         for row in reader:

@@ -19,6 +19,7 @@ import json
 import pprint
 import copy
 import warnings
+import time
 
 
 # Util
@@ -29,8 +30,9 @@ def log(name, value):
     pprint.pprint(value)
     print("\n")
 
+
 def some(xs, default=None):
-    "return some thing from the set, or None if nothing"
+    """return some thing from the set, or None if nothing"""
     if isinstance(xs, (str, unicode, int, float, bool, dict, Entity, uuid.UUID)):
         return xs
     else:
@@ -43,15 +45,17 @@ def some(xs, default=None):
             # Then empty
             return default
 
-import time
+
 def profiled(f):
     f_name = f.__name__
+
     def f_(*args, **kw_args):
         t0 = time.time()
         print('starting call to', f_name)
         result = f(*args, **kw_args)
         print("function", f_name, "took", time.time() - t0, "seconds to complete")
         return result
+
     f_.__name__ = f_name
     return f_
 
@@ -109,24 +113,23 @@ class TupleIndex(object):
     def retract(self, tupl):
         sub_index = self.keys.get(tupl[0])
         if sub_index and len(tupl) == 2:
-           sub_index.remove(tupl[1])
+            sub_index.remove(tupl[1])
         else:
-           sub_index.retract(tupl[1:])
+            sub_index.retract(tupl[1:])
 
     def to_dict(self):
         return {k: v.to_dict() if self.depth > 1 else v for k, v in self.keys.items()}
 
     def contains(self, tupl):
         return (tupl[0] in self.keys) \
-               and (len(tupl) == 1 \
+               and (len(tupl) == 1
                     or (tupl[1] in self.keys[tupl[0]]
                         if self.depth == 1
                         else self.get([tupl[0]]).contains(tupl[1:])))
 
 
-
-#def _triple_index(vals_container=set):
-    #return collections.defaultdict(lambda: collections.defaultdict(vals_container))
+# def _triple_index(vals_container=set):
+#     return collections.defaultdict(lambda: collections.defaultdict(vals_container))
 
 def _triple_index(vals_container=set):
     return TupleIndex()
@@ -169,8 +172,8 @@ class Entity(object):
                 return []
         # reference
         if self._graph._ref_attr(key) or \
-                (self._graph.lazy_refs \
-                 and self._entity.get([key]) \
+                (self._graph.lazy_refs
+                 and self._entity.get([key])
                  and all(self._graph._eav_index.contains([v]) for v in self._entity.get([key]))):
             results = [type(self)(self._graph, ident) for ident in self._entity.get([key])]
         else:
@@ -179,7 +182,6 @@ class Entity(object):
             return some(results)
         else:
             return results
-
 
     def get(self, key, default=None):
         """Get a list of values corresponding to the given key (attribute).
@@ -252,9 +254,8 @@ class Entity(object):
             return []
 
 
-#def generate_entity_class(name, namespace):
-    #return type(name, (Entity), {
-
+# def generate_entity_class(name, namespace):
+#     return type(name, (Entity), {
 
 
 def reverse_lookup(attr_name):
@@ -262,6 +263,7 @@ def reverse_lookup(attr_name):
     if parts[-1][0] == '_'[0]:
         parts[-1] = parts[-1][1:]
         return ':'.join(parts)
+
 
 def base_schema(ident_attr):
     return [{ident_attr: 'db:schema',
@@ -283,11 +285,11 @@ def base_schema(ident_attr):
 
 
 class TripleStore(object):
-    #def __new__(cls, schema=None, facts=None):
-        #if 
-        
+    # def __new__(cls, schema=None, facts=None):
+    #     if
+
     def __init__(self, schema=None, facts=None, lazy_refs=None, default_cardinality=None, types=None,
-            ident_attr="db:ident", id_attrs=None):
+                 ident_attr="db:ident", id_attrs=None):
         """Construct a new TripleStore instance, with the optional facts attribute asserted as via
         assert_facts. The schema can be specified by the facts data, by the schema attribute, and by the
         global default setting kw attrs in this signature, and precedence is taken in that order.
@@ -297,7 +299,7 @@ class TripleStore(object):
         The schema dict should map attribute names to schema attributes (`db:cardinality` and
         `db:valueType: db.type:ref` only for the moment), and should not be updated once set (for now at
         least). Additional options are:
-            """
+        """
         # 1. Load all facts, which may include schema
         #
         # Start by assuming everything cardinality many with lazy refs, to load everything without conflict
@@ -339,8 +341,8 @@ class TripleStore(object):
         # Have to do this in new above
         # Or... can we just think through the things that need to be flushed and do that post schema change in
         # update? That seems to be the sanest way if we don't want to have to specify schema everywhere
-        #if facts:
-            #self.assert_facts(facts, id_attrs=id_attrs)
+        # if facts:
+        #     self.assert_facts(facts, id_attrs=id_attrs)
 
     # Should define triples iterator
     # Define write to file
@@ -350,6 +352,7 @@ class TripleStore(object):
             attr_schema = copy.deepcopy(attr_schema)
             attr_schema[self.ident_attr] = attr
             return attr_schema
+
         eid = self.assert_fact({self.ident_attr: 'db:schema',
                                 'db:attributes': [
                                     attr_entity(attr, attr_schema)
@@ -359,15 +362,14 @@ class TripleStore(object):
     def schema(self, attr=None, meta_attr=None):
         if attr and meta_attr:
             # This could be optimized
-            #return some(self.schema(attr).get(meta_attr))
+            # return some(self.schema(attr).get(meta_attr))
             return self._eav_index.get([attr, meta_attr])
         elif attr:
             # Could work to get the cards right here
             _entity = self._eav_index.get([attr])
-            return _entity.to_dict().copy() if _entity else {} # Will this work? XXX
+            return _entity.to_dict().copy() if _entity else {}  # Will this work? XXX
         else:
             return [self.schema(a) for a in self._eav_index.get(['db:schema', 'db:attributes'])]
-
 
     # Some implementation details:
 
@@ -395,7 +397,7 @@ class TripleStore(object):
             # Just always assume sets for reverse lookups
             return False
             # Todo; if you have a unique attribute here, you can do one-one
-            #return blah if self._unique(lookup) else blah
+            # return blah if self._unique(lookup) else blah
         elif attr == 'db:cardinality':
             return 'db.cardinality:one'
         else:
@@ -427,16 +429,15 @@ class TripleStore(object):
             if reverse_attr_index and e in reverse_attr_index:
                 reverse_attr_index.remove(e)
 
-
     # Should the following two be public?
     def _assert_val(self, e, a, val, id_attrs=None, _ids=None):
-        "Asserts a val as either a literal or a nested entity; recursively defers to _assert_triple"
+        """Asserts a val as either a literal or a nested entity; recursively defers to _assert_triple"""
         if isinstance(val, dict):
             val = self._assert_dict(val, id_attrs=id_attrs, _ids=_ids)
         self._assert_triple((e, a, val))
 
     def _assert_vals(self, e, a, vals, id_attrs=None, _ids=None):
-        "Asserts some number of vals as by _assert_val"
+        """Asserts some number of vals as by _assert_val"""
         for val in vals:
             self._assert_val(e, a, val, id_attrs=id_attrs, _ids=_ids)
 
@@ -466,7 +467,6 @@ class TripleStore(object):
             eid = ident_val or uuid.uuid1()
         return str(eid)
 
-
     def _assert_dict(self, fact_dict, id_attrs=None, _ids=None):
         # Is it possible to middleware-factor local db:id vs global db:ident :vs native uuid or tuples?
         eid = self._resolve_eid(fact_dict, id_attrs=id_attrs, _ids=_ids)
@@ -484,16 +484,15 @@ class TripleStore(object):
         for triple in triples:
             self._retract_triple(triple)
 
-
     # Our public API for asserting and retracting facts
 
     def assert_fact(self, fact, id_attrs=None, _ids=None):
-        """Assert fact about an entity as a dict or as a single eav triple. Dictionaries are interpretted as a set of eav triples
-        where e is a unique identitier for the entity (uuid, globally namespaced keyword, web url,
-        whatever...), either specified in the dictionary, or generated for you (by default as a random uuid).
-        The a, v components of the triples for such an e correspond with the key value pairs of the map.
-        The vals of the dictionary should be a single value, or list of values for db.cardinality:many
-        attributes. Identity attr can be set on graph instantiation."""
+        """Assert fact about an entity as a dict or as a single eav triple. Dictionaries are interpretted as
+         a set of eav triples where e is a unique identitier for the entity (uuid, globally namespaced keyword,
+         web url, whatever...), either specified in the dictionary, or generated for you (by default as a random
+         uuid).  The a, v components of the triples for such an e correspond with the key value pairs of the map.
+         The vals of the dictionary should be a single value, or list of values for db.cardinality:many
+         attributes.  Identity attr can be set on graph instantiation."""
         if isinstance(fact, dict):
             # Returns eid
             return self._assert_dict(fact, id_attrs=id_attrs, _ids=_ids)
@@ -522,8 +521,8 @@ class TripleStore(object):
 
     # Should have this as a method as well, and just move the class method out as a simple fn
     @classmethod
-    def load(cls, filename, schema=None, id_attrs=None): # add format option eventually?
-        "Load data from a JSON file, and assert as with assert_facts."
+    def load(cls, filename, schema=None, id_attrs=None):  # add format option eventually?
+        """Load data from a JSON file, and assert as with assert_facts."""
         with open(filename, 'rb') as fp:
             data = json.load(fp)
             return cls(facts=data, schema=schema, id_attrs=id_attrs)
@@ -541,37 +540,36 @@ class TripleStore(object):
         return result
 
     def dump(self, filename):
-        "Save semantic graph to a json file as an EAV index."
+        """Save semantic graph to a json file as an EAV index."""
         with open(filename, 'w') as fp:
             json.dump(self._eav_index.to_dict(), fp, default=list)
-
 
     # # Now our query engine
     # We have a few different kind of queries we want to be able to execute
 
     # Match pattern
     # simple
-    #{'cft:id': 'dk398fjd03kjdfkj23'}
+    # {'cft:id': 'dk398fjd03kjdfkj23'}
     # more interesting
-    #{'cft:dataset': {'cft.dataset:id': 'whatever-crazy-id'}}
+    # {'cft:dataset': {'cft.dataset:id': 'whatever-crazy-id'}}
     # This can more or less always be done efficiently very easily, and extends on base GraphQL, om-next etc
     # significantly;
 
     # My python Datalog grammar proposal:
-    ##base query; matches graph
-    #{'find': ['?x', '?y'],
-     #'where': [['?x', 'person:parent', '?y']
-               #['?y', 'person:name', 'joe']]
-     ##optionally:
-     #'rules': [[['ancestor', '?x', '?y'],
-                #['?x', 'person:parent', '?y']],
-               #[['ancestor', '?x', '?z'],
-                #['?x', 'person:parent', '?y'],
-                #['ancestor' '?y', '?z']]]
-     #'take': 20,
-     #'sort': 'db:ident',
-     #}
-     # Could in memory be evaluated via a local DataScript JS server via https://pypi.python.org/pypi/PyExecJS
+    # -- base query; matches graph
+    # {'find': ['?x', '?y'],
+    #  'where': [['?x', 'person:parent', '?y']
+    #            ['?y', 'person:name', 'joe']]
+    # -- optionally:
+    #  'rules': [[['ancestor', '?x', '?y'],
+    #             ['?x', 'person:parent', '?y']],
+    #            [['ancestor', '?x', '?z'],
+    #             ['?x', 'person:parent', '?y'],
+    #             ['ancestor' '?y', '?z']]]
+    #  'take': 20,
+    #  'sort': 'db:ident',
+    # }
+    # Could in memory be evaluated via a local DataScript JS server via https://pypi.python.org/pypi/PyExecJS
 
     # Going to start for now with the simple pull and match queries
 
@@ -583,7 +581,8 @@ class TripleStore(object):
             # we look up the index, and see if the vals pointed to intersect with the lookup val for each key in
             # the pattern
             lookup_vals = val if isinstance(val, (list, set)) else [val]
-            return set(eid for eid, vals in self._aev_index.get([attr]).keys.items() if vals.intersection(lookup_vals))
+            return set(eid for eid, vals in self._aev_index.get([attr]).keys.items()
+                       if vals.intersection(lookup_vals))
 
     def match(self, pattern):
         xf_subpattern = lambda v: (self.match(v) if isinstance(v, dict) else v)
@@ -596,13 +595,12 @@ class TripleStore(object):
         return self.match(pattern)
 
     def entity(self, pattern_or_eid, namespace=None):
-        "Return a read only entity dict representation for a given eid."
+        """Return a read only entity dict representation for a given eid."""
         if isinstance(pattern_or_eid, dict):
             eid = some(self.match(pattern_or_eid))
             return self.entity(eid, namespace=namespace)
         else:
             return Entity(self, pattern_or_eid, namespace=namespace)
-
 
     def entities(self, pattern, namespace=None):
         return [self.entity(some(ident), namespace=namespace) for ident in self.match(pattern)]
@@ -653,7 +651,7 @@ class TripleStore(object):
             _seen_entities.add(eid)
             _entity = self._eav_index.get([eid])
             dict_patterns = filter(lambda x: isinstance(x, dict), pull_expr)
-            attr_patterns = filter(lambda x: not(isinstance(x, dict)), pull_expr)
+            attr_patterns = filter(lambda x: not (isinstance(x, dict)), pull_expr)
             # Get the attr_patterns (non recursive patterns), separate reverse lookups, etc
             # QUESTION Do we want to return an id dictionary when we know it's a ref? who should we copy?
             normal_attributes = filter(lambda x: x not in {'*'} and not reverse_lookup(x), attr_patterns)
@@ -667,7 +665,7 @@ class TripleStore(object):
             if '*' in attr_patterns:
                 for a, vs in _entity.keys.items():
                     if a not in pull_data:
-                        pull_data[a] = vs # cardinality schema?
+                        pull_data[a] = vs  # cardinality schema?
             # Deal with the dict patterns, which correspond with relations/refs (implicit are fine; though
             # need to think about the details of how defaults and options work out)
             for dict_pattern in dict_patterns:
@@ -681,7 +679,8 @@ class TripleStore(object):
                         elif self.lazy_refs:
                             # have to search through all triples
                             reversed_lookup = self._aev_index.get([reverse])
-                            eids = set((e for e, vs in reversed_lookup.keys.items() if eid in vs) if reversed_lookup else [])
+                            eids = set(
+                                (e for e, vs in reversed_lookup.keys.items() if eid in vs) if reversed_lookup else [])
                         else:
                             warnings.warn("Warning! Should have either lazy refs or or a schema for reverse lookups!")
                     else:
@@ -715,7 +714,7 @@ class TripleStore(object):
         eids = self.match(eids_or_pattern) if isinstance(eids_or_pattern, dict) else eids_or_pattern
         results = (self.pull(pull_expr, eid, _seen_entities=_seen_entities) for eid in eids)
         if sort_by:
-            results = sorted(results, key = lambda x: x[sort_by])
+            results = sorted(results, key=lambda x: x[sort_by])
         if not sort_desc:
             results = results.reversed()
         return results
@@ -724,18 +723,17 @@ class TripleStore(object):
 # Our data constructors, as pure functions
 
 def entity_cons(type_name, default_attr_base):
-    "Return a constructor function for creating namespaced entities"
+    """Return a constructor function for creating namespaced entities"""
+
     def f(**avs):
         avs = dict(((default_attr_base + ':' + k if ':' not in k else k), v) for k, v in avs.items())
         avs[type_name.split('.')[0] + ':type'] = type_name
         return avs
+
     return f
 
 
 def namespaced(namespace, **avs):
-    "Return a constructor function for creating namespaced entities"
+    """Return a constructor function for creating namespaced entities"""
     avs = dict(((namespace + ':' + k if ':' not in k else k), v) for k, v in avs.items())
     return avs
-
-
-
