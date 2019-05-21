@@ -3,10 +3,9 @@ import json
 import copy
 import uuid
 import tripl
-import pprint as pp
+# import pprint as pp
 import warnings
 import yaml
-pp #lint
 
 import SCons.Node
 
@@ -14,8 +13,6 @@ from Bio import SeqIO
 from Bio import Phylo
 
 import bio
-
-#import tripl
 
 
 def json_encoder_default(path_depth=0):
