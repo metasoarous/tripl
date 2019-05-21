@@ -254,4 +254,4 @@ Stay Tuned!
 
 ## Tests
 
-To run tests you can either install pytest and run it on the `tests/` directory, or run `python2 setup.py test`, which will also install pytest and any other required dependencies.
+To run tests you can either install pytest and run it on the `tests/` directory (which happens by default if you simply run `pytest`), or run `python2 setup.py test`, which will also install pytest and any other required dependencies.
