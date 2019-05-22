@@ -39,7 +39,7 @@ def json_arg(argval):
     try:
         return json.JSONDecoder().decode(argval)
     except Exception as e:
-        print "Unable to parse argument value"
+        print("Unable to parse argument value")
         raise e
 
 
@@ -107,7 +107,7 @@ def _main(args):
             json.dump(t.pull_many(args.pull_expr, args.entities or args.entity_pattern), fh, default=list,
                       indent=4)
     elif args.subcommand == 'plot':
-        print 'Plot is not yet supported'
+        print('Plot is not yet supported')
 
 
 def main():
