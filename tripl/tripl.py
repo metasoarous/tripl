@@ -722,7 +722,7 @@ class TripleStore(object):
         if sort_by:
             results = sorted(results, key=lambda x: x[sort_by])
         if not sort_desc:
-            results = results.reversed()
+            results = reversed(results)
         return results
 
 
