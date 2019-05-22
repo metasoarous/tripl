@@ -20,6 +20,7 @@ import pprint
 import copy
 import warnings
 import time
+import functools
 
 
 # Util
@@ -587,7 +588,7 @@ class TripleStore(object):
     def match(self, pattern):
         xf_subpattern = lambda v: (self.match(v) if isinstance(v, dict) else v)
         pattern = {k: xf_subpattern(v) for k, v in pattern.items()}
-        return reduce(set.intersection, map(self._entity_lookup, pattern.items()))
+        return functools.reduce(set.intersection, map(self._entity_lookup, pattern.items()))
 
     # Should probably rename just match, instead of match pattern; then can do match_some for get first?
     def match_pattern(self, pattern):
