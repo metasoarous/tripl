@@ -203,7 +203,10 @@ class Entity(object):
             # have to make sure that for cardinality one we don't accidentally iterate over k/v pairs of a
             # dict as though they are each entity dicts
             key_result = self.get(keys[0])
-            sub_results = lambda x: x.get_in(keys[1:]) or []
+
+            def sub_results(x):
+                return x.get_in(keys[1:]) or []
+
             if isinstance(key_result, list):
                 result = list(subval
                               for x in key_result
@@ -586,7 +589,9 @@ class TripleStore(object):
                        if vals.intersection(lookup_vals))
 
     def match(self, pattern):
-        xf_subpattern = lambda v: (self.match(v) if isinstance(v, dict) else v)
+        def xf_subpattern(v):
+            return self.match(v) if isinstance(v, dict) else v
+
         pattern = {k: xf_subpattern(v) for k, v in pattern.items()}
         return functools.reduce(set.intersection, map(self._entity_lookup, pattern.items()))
 
