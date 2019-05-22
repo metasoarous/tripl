@@ -41,7 +41,7 @@ def some(xs, default=None):
             return next(iter(xs))
         except TypeError:
             # Then not iterable
-            return xs if xs != None else default
+            return xs if xs is not None else default
         except StopIteration:
             # Then empty
             return default
@@ -327,10 +327,10 @@ class TripleStore(object):
         # (semi-static; could generalize with method calls based on schema)
         schema_pull = self.pull(['*'], 'db:schema')
         lazy_refs = lazy_refs or some(schema_pull.get('db.refs:lazy'))
-        self.lazy_refs = True if lazy_refs == None else lazy_refs
+        self.lazy_refs = True if lazy_refs is None else lazy_refs
         # Setting default cardinality
         default_cardinality = default_cardinality or some(schema_pull.get('db.cardinality:default'))
-        self.default_cardinality = 'db.cardinality:many' if default_cardinality == None else default_cardinality
+        self.default_cardinality = 'db.cardinality:many' if default_cardinality is None else default_cardinality
         self.assert_fact({
             self.ident_attr: 'db:schema',
             'db.refs:lazy': self.lazy_refs,
