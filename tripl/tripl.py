@@ -189,6 +189,7 @@ class Entity(object):
         
         Note: Eventually we may treat schema in such a way where get returns the singular value for things
         marked cardinality one."""
+        # return self[key]
         return self[key]
 
     def get_in(self, keys, default=None):
@@ -585,8 +586,12 @@ class TripleStore(object):
             # we look up the index, and see if the vals pointed to intersect with the lookup val for each key in
             # the pattern
             lookup_vals = val if isinstance(val, (list, set)) else [val]
-            return set(eid for eid, vals in self._aev_index.get([attr]).keys.items()
-                       if vals.intersection(lookup_vals))
+            index_results = self._aev_index.get([attr])
+            if index_results:
+                return set(eid for eid, vals in index_results.keys.items()
+                           if vals.intersection(lookup_vals))
+            else:
+                return set()
 
     def match(self, pattern):
         def xf_subpattern(v):
