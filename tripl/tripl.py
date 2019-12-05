@@ -189,8 +189,7 @@ class Entity(object):
         
         Note: Eventually we may treat schema in such a way where get returns the singular value for things
         marked cardinality one."""
-        # return self[key]
-        return self[key]
+        return self[key] or default
 
     def get_in(self, keys, default=None):
         """Recursive form of get, where keys is a list or tuple. Returns default if any key in the relation
