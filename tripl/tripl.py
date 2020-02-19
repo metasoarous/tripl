@@ -23,6 +23,14 @@ import time
 import functools
 import sys
 
+# Constants
+# ---------
+SUPPORTED_TYPES = (str, bytes, int, float, bool, dict, Entity, uuid.UUID)
+try:
+    # In Python 2 `str = bytes` and an additional `unicode` type is used for strings:
+    SUPPORTED_TYPES += (unicode,)
+except NameError:
+    pass
 
 # Util
 # ----
@@ -749,13 +757,3 @@ def namespaced(namespace, **avs):
     """Return a constructor function for creating namespaced entities"""
     avs = dict(((namespace + ':' + k if ':' not in k else k), v) for k, v in avs.items())
     return avs
-
-
-# Constants
-# ---------
-SUPPORTED_TYPES = (str, bytes, int, float, bool, dict, Entity, uuid.UUID)
-try:
-    # In Python 2 `str = bytes` and an additional `unicode` type is used for strings:
-    SUPPORTED_TYPES += (unicode,)
-except NameError:
-    pass
