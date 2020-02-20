@@ -21,7 +21,16 @@ import copy
 import warnings
 import time
 import functools
+import sys
 
+# Constants
+# ---------
+SUPPORTED_TYPES = (str, bytes, int, float, bool, dict, Entity, uuid.UUID)
+try:
+    # In Python 2 `str = bytes` and an additional `unicode` type is used for strings:
+    SUPPORTED_TYPES += (unicode,)
+except NameError:
+    pass
 
 # Util
 # ----
@@ -34,7 +43,7 @@ def log(name, value):
 
 def some(xs, default=None):
     """return some thing from the set, or None if nothing"""
-    if isinstance(xs, (str, unicode, int, float, bool, dict, Entity, uuid.UUID)):
+    if isinstance(xs, SUPPORTED_TYPES):
         return xs
     else:
         try:
